@@ -37,14 +37,20 @@ if ! gsutil ls "${DELTA_BUCKET}" >/dev/null 2>&1; then
 fi
 
 echo "-> Creating Tree-AH index: ${INDEX_NAME}"
-# Create temporary metadata file with required approximateNeighborsCount
+# Create temporary metadata file with optimized TreeAH configuration
+# Based on Vertex AI RAG Guide 2025 - TreeAH for high recall:
+# - leaf_node_embedding_count: 1000
+# - leaf_nodes_to_search_percent: 10 (searches 10% of leaf nodes)
 METADATA_FILE=$(mktemp)
 cat > "${METADATA_FILE}" <<EOF
 {
   "contentsDeltaUri": "${DELTA_BUCKET}/${INDEX_NAME}",
   "config": {
     "algorithmConfig": {
-      "treeAhConfig": {}
+      "treeAhConfig": {
+        "leafNodeEmbeddingCount": 1000,
+        "leafNodesToSearchPercent": 10
+      }
     },
     "approximateNeighborsCount": 1000,
     "dimensions": 1408,

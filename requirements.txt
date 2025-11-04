@@ -6,6 +6,13 @@ pydantic-settings==2.1.0
 python-multipart==0.0.6
 
 # Google Cloud Platform (GA 2025 stack)
+# Aligned with Vertex AI RAG Guide November 2025
+# google-cloud-aiplatform >=1.82.0 includes:
+# - Vertex AI RAG Engine (GA desde enero 2025)
+# - Context Caching (75% cost reduction)
+# - Gemini 2.5 Flash/Pro support
+# - Multimodal Embeddings (1408 dims)
+# - EvalTask for quality metrics
 google-cloud-aiplatform==1.82.0
 google-cloud-storage==2.16.0
 google-cloud-documentai==2.30.0
