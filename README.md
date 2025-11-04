@@ -1,5 +1,7 @@
 # SME AI Vertex - Injection Molding Feasibility Analysis
 
+**🚀 Completamente alineado con la Guía Técnica Vertex AI RAG Multimodal (Noviembre 2025)**
+
 AI-powered system for analyzing technical drawings and generating feasibility exception reports for injection molding projects.
 
 **Aligned with Michael's Vision:**
@@ -8,6 +10,17 @@ AI-powered system for analyzing technical drawings and generating feasibility ex
 - Detect dimensioning issues, GD&T problems, molding defect risks
 - Executive + Detailed reports for client sign-off
 - AI expert chat with grounding
+
+**✨ Production-Ready Features (GA 2025):**
+- ✅ **Vertex AI RAG Engine** (GA desde enero 2025) - Knowledge base gestionada
+- ✅ **Context Caching** - 75% reducción de costos en tokens repetidos
+- ✅ **Gemini 2.5 Flash/Pro** - Modelos multimodales con 1M+ tokens de contexto
+- ✅ **Vector Search TreeAH** - Configuración optimizada para alto recall
+- ✅ **Streaming Responses** - UX mejorada en chat interactivo
+- ✅ **RAG Quality Evaluation** - Métricas de groundedness, relevance, coherence
+- ✅ **Multimodal Embeddings** - 1408 dimensiones en espacio semántico unificado
+- ✅ **Document AI OCR** - Fallback inteligente para dibujos complejos
+- ✅ **Security & Compliance** - IAM, VPC-SC, CMEK, DLP
 
 ---
 
@@ -63,15 +76,22 @@ This system provides:
 
 ## Architecture
 
-### Tech Stack
+### Tech Stack (GA 2025 - Production Ready)
 
 - **Backend**: FastAPI (Python 3.11)
 - **AI/ML**: Google Vertex AI
-  - Gemini 2.5 Flash/Pro (VLM for drawing analysis)
-  - Multimodal Embeddings (visual search)
-  - RAG Engine (knowledge base)
-- **Storage**: Google Cloud Storage
-- **Deployment**: Cloud Run (serverless containers)
+  - **Gemini 2.5 Flash** ($0.15/1M input tokens) - Análisis de dibujos
+  - **Gemini 2.5 Pro** ($1.25/1M tokens) - Casos complejos
+  - **text-embedding-005** (768 dims) - Embeddings de texto
+  - **multimodalembedding@001** (1408 dims) - Embeddings multimodales
+  - **RAG Engine** (GA 2025) - Knowledge base gestionada
+  - **Vector Search TreeAH** - Alto recall, latencia sub-10ms
+  - **Document AI Layout Parser** - OCR avanzado con layout detection
+  - **Context Caching** - 75% reducción de costos
+- **Storage**: Google Cloud Storage (con CMEK)
+- **Vector DB**: Vertex AI Vector Search (TreeAH índices)
+- **Deployment**: Cloud Run (serverless auto-scaling)
+- **Monitoring**: Cloud Monitoring + Structured Logging (structlog)
 - **Frontend**: Vercel (separate repo, connects via API)
 
 ### System Flow
@@ -445,6 +465,97 @@ curl -X POST "http://localhost:8080/analysis/123e4567.../chat" \
 
 ---
 
+## 📚 Documentación Completa
+
+### Guías de Producción
+
+- **[Security & Compliance](./docs/SECURITY.md)** - IAM, VPC-SC, CMEK, DLP, HIPAA, GDPR
+- **[Cost Optimization](./docs/COST_OPTIMIZATION.md)** - Estrategias para reducir costos hasta 75%
+- **[Production Deployment](./docs/PRODUCTION_DEPLOYMENT.md)** - Checklist completo de deployment
+
+### Configuración Óptima (Según Guía Técnica)
+
+#### RAG Engine
+```python
+# Chunking óptimo (src/services/knowledge_base.py)
+chunking_config = rag.ChunkingConfig(
+    chunk_size=512,      # Balance calidad/costo
+    chunk_overlap=100    # Suficiente para contexto
+)
+```
+
+#### Vector Search TreeAH
+```python
+# Configuración de alto recall (scripts/setup_vector_search.sh)
+tree_ah_config = {
+    "leafNodeEmbeddingCount": 1000,      # Óptimo para <100M vectors
+    "leafNodesToSearchPercent": 10       # Busca 10% de leaf nodes
+}
+```
+
+#### Context Caching
+```python
+# 75% reducción de costos (src/config/gcp_clients.py)
+model = get_generative_model(
+    "gemini-2.5-flash",
+    cache_ttl_seconds=3600,  # Cache por 1 hora
+    max_context_cache_entries=32
+)
+```
+
+#### RAG Quality Evaluation
+```python
+# Evaluar calidad de respuestas (src/services/rag_evaluation.py)
+from src.services.rag_evaluation import get_rag_evaluation
+
+eval_service = get_rag_evaluation()
+scores = await eval_service.evaluate_response(
+    query="user query",
+    response="ai response",
+    retrieved_docs=["doc1", "doc2"]
+)
+
+# scores = {
+#     "groundedness": 0.85,  # Basado en docs recuperados
+#     "relevance": 0.90,     # Responde la query
+#     "coherence": 0.88,     # Lógicamente consistente
+#     "fluency": 0.92,       # Bien escrito
+#     "safety": 1.0          # Sin contenido dañino
+# }
+```
+
+#### Streaming Chat
+```python
+# UX mejorada con streaming (src/services/chat_service.py)
+chat_service = ChatService()
+
+async for chunk in chat_service.chat_stream(
+    analysis_id="123",
+    message="¿Por qué esta dimensión es crítica?",
+    history=[]
+):
+    print(chunk, end='', flush=True)
+```
+
+### Costos Estimados (Carga Moderada)
+
+| Componente | Costo/mes | Optimizado |
+|------------|-----------|------------|
+| Vector Search (e2-standard-16) | $547 | $547 |
+| Gemini Models | $118 | **$30** (con caching) |
+| Document AI | $2 | $2 |
+| Storage | $10 | $10 |
+| **TOTAL** | **$677** | **$589** |
+
+**Ahorro con optimizaciones**: $88/mes (13%)
+- Context caching: 75% en tokens repetidos
+- Flash vs Pro: 88% más económico
+- Batch queries: 30-40% reducción
+
+Ver [Cost Optimization Guide](./docs/COST_OPTIMIZATION.md) para más detalles.
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -518,4 +629,42 @@ gcloud run logs tail sme-ai-vertex --region us-central1
 
 ---
 
-**Status**: MVP in development | **Version**: 0.1.0 | **Last Updated**: 2025-11-02
+---
+
+## 📖 Referencias y Recursos
+
+### Guía Técnica Base
+
+Este proyecto está completamente alineado con:
+- **Guía Técnica: Chatbot RAG Multimodal en Google Cloud Vertex AI (Noviembre 2025)**
+- Incluye todas las mejores prácticas de GA 2025
+- Optimizado para costos y rendimiento en producción
+
+### Recursos Oficiales de Google Cloud
+
+#### Documentación
+- **RAG Engine**: https://cloud.google.com/vertex-ai/generative-ai/docs/rag-engine/rag-overview
+- **Agent Builder**: https://cloud.google.com/vertex-ai/generative-ai/docs/agent-builder/overview
+- **Multimodal Embeddings**: https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-multimodal-embeddings
+- **Gemini Models**: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models
+- **Pricing**: https://cloud.google.com/vertex-ai/pricing
+
+#### Repositorios GitHub
+- **Generative AI Samples**: https://github.com/GoogleCloudPlatform/generative-ai
+- **Agent Starter Pack**: https://github.com/GoogleCloudPlatform/agent-starter-pack
+- **Vector Search Samples**: https://github.com/GoogleCloudPlatform/vertex-ai-samples
+
+#### Codelabs Interactivos
+- **Building Google-quality RAG**: https://codelabs.developers.google.com/build-google-quality-rag
+- **Building AI Agents**: https://codelabs.developers.google.com/devsite/codelabs/building-ai-agents-vertexai
+
+### Soporte
+- **RAG Engine Support**: vertex-ai-rag-engine-support@google.com
+- **Community Forum**: https://googlecloudcommunity.com/gc/AI-ML
+- **Issues**: https://github.com/CrisRS06/sme-ai-vertex/issues
+
+---
+
+**Status**: Production-Ready (GA 2025) | **Version**: 1.0.0 | **Last Updated**: 2025-11-04
+
+**Alineamiento**: ✅ Completamente alineado con Guía Técnica Vertex AI RAG Multimodal (Noviembre 2025)

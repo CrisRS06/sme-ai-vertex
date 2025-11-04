@@ -30,7 +30,12 @@ logger = structlog.get_logger()
 class DrawingAnalyzer:
     """Service for analyzing technical drawings with Gemini VLM."""
 
-    def __init__(self):
+    def __init__(self, enable_context_caching: bool = True):
+        """Initialize drawing analyzer with context caching support.
+
+        Args:
+            enable_context_caching: Enable context caching for 75% cost reduction
+        """
         init_vertex_ai()
 
         # Store quality mode
@@ -43,14 +48,30 @@ class DrawingAnalyzer:
             else settings.vertex_ai_model_flash
         )
 
-        self.model = GenerativeModel(model_name)
-        self.processor = DrawingProcessor()
+        # Use context caching to reduce costs by 75% for repeated prompts
+        if enable_context_caching:
+            from src.config.gcp_clients import get_generative_model
+            # Cache analysis prompts for 30 minutes (1800 seconds)
+            self.model = get_generative_model(
+                model_name,
+                cache_ttl_seconds=1800,
+                max_context_cache_entries=16
+            )
+            logger.info(
+                "drawing_analyzer_initialized_with_caching",
+                model=model_name,
+                quality_mode=self.quality_mode,
+                cache_ttl_seconds=1800
+            )
+        else:
+            self.model = GenerativeModel(model_name)
+            logger.info(
+                "drawing_analyzer_initialized",
+                model=model_name,
+                quality_mode=self.quality_mode
+            )
 
-        logger.info(
-            "drawing_analyzer_initialized",
-            model=model_name,
-            quality_mode=self.quality_mode
-        )
+        self.processor = DrawingProcessor()
 
     def _create_analysis_prompt(self) -> str:
         """

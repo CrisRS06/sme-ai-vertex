@@ -26,21 +26,40 @@ class ChatService:
     - Conversation history support
     """
 
-    def __init__(self):
-        """Initialize chat service with Gemini model."""
+    def __init__(self, enable_context_caching: bool = True):
+        """Initialize chat service with Gemini model and context caching.
+
+        Args:
+            enable_context_caching: Enable context caching for 75% cost reduction on repeated context
+        """
         vertexai.init(
             project=settings.gcp_project_id,
             location=settings.gcp_region
         )
 
-        # Use Flash for fast, interactive chat
-        self.model = GenerativeModel(settings.vertex_ai_model_flash)
-
-        logger.info(
-            "chat_service_initialized",
-            project=settings.gcp_project_id,
-            model=settings.vertex_ai_model_flash
-        )
+        # Use Flash for fast, interactive chat with context caching
+        # Context caching reduces costs by 75% for repeated context (knowledge base docs)
+        if enable_context_caching:
+            from src.config.gcp_clients import get_generative_model
+            # Cache context for 1 hour (3600 seconds)
+            self.model = get_generative_model(
+                settings.vertex_ai_model_flash,
+                cache_ttl_seconds=3600,
+                max_context_cache_entries=32
+            )
+            logger.info(
+                "chat_service_initialized_with_caching",
+                project=settings.gcp_project_id,
+                model=settings.vertex_ai_model_flash,
+                cache_ttl_seconds=3600
+            )
+        else:
+            self.model = GenerativeModel(settings.vertex_ai_model_flash)
+            logger.info(
+                "chat_service_initialized",
+                project=settings.gcp_project_id,
+                model=settings.vertex_ai_model_flash
+            )
 
     def _build_analysis_context(self, analysis_id: str) -> str:
         """
@@ -564,12 +583,12 @@ Always cite sources when applicable.
     ) -> ChatResponse:
         """
         Unified chat specifically for file upload + analysis flow.
-        
+
         Args:
             message: User's message
             history: Conversation history
             file: PDF file to analyze
-            
+
         Returns:
             ChatResponse with analysis results + chat response
         """
@@ -583,27 +602,145 @@ Always cite sources when applicable.
             # Analyze the PDF file
             from src.services.drawing_analyzer import DrawingAnalyzer
             drawing_analyzer = DrawingAnalyzer()
-            
+
             # Read file content
             file_content = await file.read()
-            
+
             # Analyze the drawing
             analysis = await drawing_analyzer.analyze_drawing_from_pdf(file_content)
-            
+
             # Build comprehensive analysis context
             analysis_context = self._build_analysis_from_object(analysis)
-            
+
             # Generate initial analysis summary for user
             analysis_summary = self._format_analysis_summary(analysis)
-            
+
             # Combine analysis summary with user's message for enhanced context
             enhanced_message = f"{analysis_summary}\n\nUsuario pregunta: {message}"
-            
+
             # Use unified chat with analysis context
             return await self.unified_chat(enhanced_message, history, file=None)
 
         except Exception as e:
             logger.error("unified_chat_file_failed", error=str(e), filename=file.filename)
+            raise
+
+    async def chat_stream(
+        self,
+        analysis_id: str,
+        message: str,
+        history: List[ChatMessage]
+    ):
+        """
+        Stream chat responses for better UX.
+
+        Yields response chunks as they are generated.
+        Recommended by Vertex AI guide for interactive chat experiences.
+
+        Args:
+            analysis_id: ID of analysis to discuss
+            message: User's question or message
+            history: Previous conversation messages
+
+        Yields:
+            str: Response chunks as they are generated
+        """
+        try:
+            logger.info(
+                "chat_stream_processing",
+                analysis_id=analysis_id,
+                message_preview=message[:100]
+            )
+
+            # Build context from analysis
+            analysis_context = self._build_analysis_context(analysis_id)
+
+            # Build system prompt
+            system_prompt = self._build_system_prompt(analysis_context)
+
+            # Format history
+            contents = self._format_chat_history(history)
+
+            # Add system prompt if history is empty
+            if not contents:
+                contents.append(
+                    Content(
+                        role="user",
+                        parts=[Part.from_text(system_prompt)]
+                    )
+                )
+                contents.append(
+                    Content(
+                        role="model",
+                        parts=[Part.from_text(
+                            "I understand. I'm ready to help analyze this injection molding drawing. "
+                            "What would you like to know?"
+                        )]
+                    )
+                )
+
+            # Add current message
+            contents.append(
+                Content(
+                    role="user",
+                    parts=[Part.from_text(message)]
+                )
+            )
+
+            # Configure generation with grounding
+            generation_config = GenerationConfig(
+                temperature=0.3,
+                top_p=0.95,
+                top_k=40,
+                max_output_tokens=2048,
+            )
+
+            # Enable grounding
+            tools = []
+            if settings.rag_data_store_id:
+                try:
+                    from vertexai.preview.generative_models import Tool
+                    from vertexai.preview import rag
+
+                    grounding_tool = Tool.from_retrieval(
+                        retrieval=rag.Retrieval(
+                            source=rag.VertexRagStore(
+                                rag_resources=[
+                                    rag.RagResource(
+                                        rag_corpus=settings.rag_data_store_id,
+                                    )
+                                ],
+                                similarity_top_k=5,
+                                vector_distance_threshold=0.3,
+                            )
+                        )
+                    )
+                    tools.append(grounding_tool)
+                    logger.info("streaming_grounding_enabled")
+                except Exception as e:
+                    logger.error("streaming_grounding_failed", error=str(e))
+
+            # Generate streaming response
+            response = self.model.generate_content(
+                contents=contents,
+                generation_config=generation_config,
+                tools=tools if tools else None,
+                stream=True  # Enable streaming
+            )
+
+            # Stream chunks as they arrive
+            for chunk in response:
+                if hasattr(chunk, 'text') and chunk.text:
+                    yield chunk.text
+
+            logger.info("chat_stream_completed", analysis_id=analysis_id)
+
+        except Exception as e:
+            logger.error(
+                "chat_stream_failed",
+                error=str(e),
+                analysis_id=analysis_id
+            )
             raise
 
     def _build_analysis_from_object(self, analysis) -> str:
