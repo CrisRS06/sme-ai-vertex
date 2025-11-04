@@ -139,6 +139,8 @@ This system provides:
 
 ## Quick Start
 
+**Ver [QUICKSTART.md](./QUICKSTART.md) para setup en 5 minutos.**
+
 ### 1. Clone & Setup
 
 ```bash
@@ -218,12 +220,16 @@ SME AI Vertex/
 │   ├── services/                # Business logic
 │   │   ├── knowledge_base.py    # KB ingestion & RAG
 │   │   ├── drawing_processor.py # PDF→PNG, embeddings
-│   │   ├── drawing_analyzer.py  # [TODO] VLM analysis
-│   │   ├── exception_engine.py  # [TODO] Best practices validation
-│   │   ├── report_generator.py  # [TODO] Report generation
-│   │   ├── chat_service.py      # [TODO] Chat implementation
-│   │   ├── vector_search.py     # Vertex AI / SQLite vector search services
-│   │   └── vector_registry.py   # Registro auxiliar de embeddings
+│   │   ├── drawing_analyzer.py  # VLM analysis with context caching
+│   │   ├── exception_engine.py  # Best practices validation
+│   │   ├── report_generator.py  # Executive & detailed reports
+│   │   ├── chat_service.py      # Chat with streaming support
+│   │   ├── rag_evaluation.py    # RAG quality evaluation
+│   │   ├── document_ai_service.py # OCR fallback with Document AI
+│   │   ├── vector_search.py     # Vertex AI Vector Search
+│   │   ├── vector_registry.py   # Embeddings registry
+│   │   ├── sqlite_db.py         # Metadata storage
+│   │   └── metrics_service.py   # System metrics
 │   │
 │   ├── config/                  # Configuration
 │   │   ├── settings.py          # Environment variables loader
@@ -234,8 +240,12 @@ SME AI Vertex/
 ├── scripts/                     # Automation scripts
 │   ├── setup_gcp.sh             # GCP environment setup
 │   ├── setup_vector_search.sh   # Provision Vertex AI Vector Search (Tree-AH)
+│   ├── setup_rag_engine.sh      # Setup RAG Engine corpus
+│   ├── setup_document_ai.sh     # Setup Document AI processor
+│   ├── setup_iam_granular.sh    # Setup IAM with least privilege
 │   ├── migrate_embeddings_to_vertex.py  # Reindex embeddings to Vertex AI
-│   └── deploy_cloudrun.sh       # Cloud Run deployment
+│   ├── deploy_cloudrun.sh       # Cloud Run deployment
+│   └── test_system.sh           # Automated testing script
 │
 ├── templates/                   # Jinja2 templates for reports
 │   ├── executive_report.html    # [TODO]
@@ -432,32 +442,38 @@ curl -X POST "http://localhost:8080/analysis/123e4567.../chat" \
 
 ## Roadmap
 
-### Phase 1: MVP (Weeks 1-2) ✅ IN PROGRESS
+### Phase 1: MVP ✅ COMPLETED
 - [x] Project structure & configuration
-- [x] FastAPI endpoints (stubs)
+- [x] FastAPI endpoints
 - [x] GCP setup automation
 - [x] Knowledge base ingestion (RAG Engine)
 - [x] Drawing processing (PDF→PNG, embeddings)
-- [ ] VLM analysis with Gemini 2.5
-- [ ] Exception Engine (best practices)
-- [ ] Report generation
+- [x] VLM analysis with Gemini 2.5 + context caching
+- [x] Exception Engine (best practices validation)
+- [x] Report generation (executive & detailed)
 
-### Phase 2: Core Features (Weeks 3-4)
-- [ ] Vector Search integration
-- [ ] Chat interface
-- [ ] Metrics & logging
-- [ ] Testing with Gen6 case
-- [ ] Frontend (Vercel) integration
+### Phase 2: Core Features ✅ COMPLETED
+- [x] Vector Search integration (TreeAH)
+- [x] Chat interface with streaming
+- [x] RAG quality evaluation
+- [x] Metrics & logging (structlog)
+- [x] Document AI OCR fallback
+- [x] Complete testing guide
 
-### Phase 3: Polish & Optimization (Week 5+)
-- [ ] Performance optimization
-- [ ] Cost optimization (Flash vs Pro)
-- [ ] Advanced exception rules
-- [ ] User authentication
-- [ ] Admin dashboard
-- [ ] Batch processing
+### Phase 3: Production Ready ✅ COMPLETED
+- [x] Context caching (75% cost reduction)
+- [x] Cost optimization guide
+- [x] Security & compliance documentation
+- [x] Production deployment checklist
+- [x] User experience documentation
+- [x] System architecture diagrams
+- [x] Automated testing scripts
 
 ### Future Enhancements
+- [ ] Frontend (Vercel) integration
+- [ ] User authentication & multi-tenancy
+- [ ] Admin dashboard
+- [ ] Batch processing
 - [ ] SigmaSoft integration
 - [ ] Automated FEMA generation
 - [ ] Multi-language support
@@ -467,11 +483,20 @@ curl -X POST "http://localhost:8080/analysis/123e4567.../chat" \
 
 ## 📚 Documentación Completa
 
+### Guías Principales
+
+- **[QUICKSTART.md](./QUICKSTART.md)** - Setup rápido en 5 minutos
+- **[TESTING_GUIDE.md](./docs/TESTING_GUIDE.md)** - Guía completa de testing
+- **[FRONTEND_API_GUIDE.md](./FRONTEND_API_GUIDE.md)** - Guía de integración con frontend
+
 ### Guías de Producción
 
+- **[User Experience](./docs/USER_EXPERIENCE.md)** - Experiencia de usuario end-to-end
+- **[System Flow](./docs/SYSTEM_FLOW_DIAGRAM.md)** - Diagramas y arquitectura del sistema
 - **[Security & Compliance](./docs/SECURITY.md)** - IAM, VPC-SC, CMEK, DLP, HIPAA, GDPR
 - **[Cost Optimization](./docs/COST_OPTIMIZATION.md)** - Estrategias para reducir costos hasta 75%
 - **[Production Deployment](./docs/PRODUCTION_DEPLOYMENT.md)** - Checklist completo de deployment
+- **[Alignment Summary](./ALIGNMENT_SUMMARY.md)** - Resumen de alineación con guía técnica
 
 ### Configuración Óptima (Según Guía Técnica)
 
@@ -558,6 +583,10 @@ Ver [Cost Optimization Guide](./docs/COST_OPTIMIZATION.md) para más detalles.
 
 ## Troubleshooting
 
+### Documentación de Testing
+
+**Ver [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) para troubleshooting completo.**
+
 ### Common Issues
 
 **1. Import errors when running locally**
@@ -590,6 +619,16 @@ brew install poppler
 - Request quota increase if needed
 - Use `quality_mode=flash` to reduce costs
 
+### Testing Rápido
+
+```bash
+# Prueba automatizada del sistema
+./scripts/test_system.sh http://localhost:8080
+
+# Ver guía completa
+cat docs/TESTING_GUIDE.md
+```
+
 ### Logs
 
 ```bash
@@ -602,9 +641,10 @@ gcloud run logs tail sme-ai-vertex --region us-central1
 
 ### Support
 
-- Check `/docs` endpoint for API documentation
-- Review GCP logs in Cloud Console
-- Contact: [your-email@example.com]
+- **Testing Guide**: [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md)
+- **API Documentation**: http://localhost:8080/docs
+- **Frontend Integration**: [FRONTEND_API_GUIDE.md](./FRONTEND_API_GUIDE.md)
+- **GCP Logs**: Cloud Console → Logging
 
 ---
 
