@@ -1,0 +1,46 @@
+# Plan de Diagnóstico - Error del Chat
+
+## Problema Reportado
+- Error: "Error en el chat" en archivo JavaScript compilado de Next.js
+- Ubicación: `_07ad1e98._.js:245:32`
+- Versión: Next.js 16.0.1 (Turbopack)
+- Síntomas: Chat no funciona, no devuelve mensajes, no analiza archivos
+
+## Lista de Tareas
+
+### 1. Análisis del Error
+- [x] Examinar logs del servidor de desarrollo
+- [x] Identificar el origen del error en el código fuente
+- [x] Verificar configuración de Next.js y Turbopack
+
+### 2. Exploración del Código
+- [x] Revisar componentes de chat en frontend (componente unificado encontrado)
+- [x] Examinar APIs de backend relacionadas con chat (endpoints encontrados)
+- [ ] Verificar rutas de la aplicación
+- [ ] Revisar ChatService y configuraciones
+- [ ] Probar endpoint directamente
+
+### 3. Diagnóstico de Conectividad
+- [x] Verificar que el servidor backend esté funcionando (proceso encontrado)
+- [x] Revisar variables de entorno (API endpoints configurados)
+- [ ] Comprobar CORS y configuraciones de red
+
+### 4. Pruebas de Funcionalidad
+- [ ] Reproducir el error localmente
+- [ ] Verificar subida de archivos
+- [ ] Probar funcionalidad de chat
+- [ ] Validar análisis de documentos
+
+### 5. Resolución del Problema
+- [ ] Aplicar fixes identificados
+- [ ] Verificar resolución
+- [ ] Documentar cambios realizados
+
+## Hallazgos Iniciales
+- Frontend: Chat unificado implementado en `/frontend/app/page.tsx`
+- Backend: Endpoints de chat definidos en `/src/api/chat.py`
+- Servidor: Python main.py corriendo en puerto 8080 ✓
+- Configuración: API URL apunta a localhost:8080 ✓
+
+## Estado: En Progreso
+Fecha de inicio: 2025-11-03 18:11:48

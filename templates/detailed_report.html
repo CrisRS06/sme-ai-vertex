@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Feasibility Report - {{ part_id }}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.75in;
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 10pt;
+            line-height: 1.3;
+            color: #333;
+        }
+
+        h1, h2, h3 {
+            color: #003366;
+            page-break-after: avoid;
+        }
+
+        h1 {
+            font-size: 20pt;
+            border-bottom: 3px solid #003366;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 14pt;
+            margin-top: 25px;
+            border-bottom: 1px solid #003366;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            font-size: 12pt;
+            margin-top: 15px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 9pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 9pt;
+            page-break-inside: avoid;
+        }
+
+        table th {
+            background-color: #003366;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        table td {
+            border: 1px solid #ddd;
+            padding: 6px;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .meta-item {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-left: 3px solid #003366;
+        }
+
+        .meta-label {
+            font-weight: bold;
+            font-size: 8pt;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .meta-value {
+            font-size: 11pt;
+            margin-top: 3px;
+        }
+
+        .exception-card {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin: 10px 0;
+            border-left: 5px solid #ccc;
+            page-break-inside: avoid;
+        }
+
+        .exception-card.critical {
+            border-left-color: #f44336;
+            background-color: #fff5f5;
+        }
+
+        .exception-card.warning {
+            border-left-color: #ff9800;
+            background-color: #fffbf0;
+        }
+
+        .exception-card.info {
+            border-left-color: #2196f3;
+            background-color: #f0f8ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 8pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-critical {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .badge-warning {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .badge-info {
+            background-color: #2196f3;
+            color: white;
+        }
+
+        .badge-category {
+            background-color: #666;
+            color: white;
+        }
+
+        .evidence {
+            background-color: #f0f0f0;
+            padding: 8px;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 8pt;
+            border-left: 3px solid #003366;
+        }
+
+        .dimension-row td {
+            font-size: 8.5pt;
+        }
+
+        .toc {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+        }
+
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .toc li {
+            padding: 5px 0;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+        }
+
+        .stat-number {
+            font-size: 24pt;
+            font-weight: bold;
+            color: #003366;
+        }
+
+        .stat-label {
+            font-size: 8pt;
+            color: #666;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <!-- Title Page -->
+    <div class="header">
+        <h1>Detailed Technical Feasibility Report</h1>
+        <div class="subtitle">Injection Molding Pre-Acceptance Analysis</div>
+    </div>
+
+    <!-- Part Information -->
+    <div class="meta-grid">
+        <div class="meta-item">
+            <div class="meta-label">Part Number</div>
+            <div class="meta-value"><strong>{{ part_id or 'Not Specified' }}</strong></div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Part Name</div>
+            <div class="meta-value">{{ part_name or 'Not Specified' }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Material</div>
+            <div class="meta-value">{{ material or 'Not Specified' }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Material Grade</div>
+            <div class="meta-value">{{ material_grade or 'Not Specified' }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Analysis Date</div>
+            <div class="meta-value">{{ analysis_date }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Analysis ID</div>
+            <div class="meta-value"><code>{{ analysis_id }}</code></div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Drawing Pages</div>
+            <div class="meta-value">{{ page_count or 'Unknown' }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Quality Mode</div>
+            <div class="meta-value">{{ quality_mode|upper }}</div>
+        </div>
+    </div>
+
+    <!-- Table of Contents -->
+    <div class="toc">
+        <h3 style="margin-top: 0;">Table of Contents</h3>
+        <ul>
+            <li>1. Executive Summary</li>
+            <li>2. Exception Analysis</li>
+            <li>3. Dimensional Analysis</li>
+            <li>4. GD&T Specifications</li>
+            <li>5. Surface Finish Requirements</li>
+            <li>6. General Notes & Specifications</li>
+            <li>7. Recommendations</li>
+        </ul>
+    </div>
+
+    <!-- Executive Summary -->
+    <h2>1. Executive Summary</h2>
+
+    <div class="summary-stats">
+        <div class="stat-box">
+            <div class="stat-number">{{ total_exceptions }}</div>
+            <div class="stat-label">Total Exceptions</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number" style="color: #f44336;">{{ critical_count }}</div>
+            <div class="stat-label">Critical</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number" style="color: #ff9800;">{{ warning_count }}</div>
+            <div class="stat-label">Warnings</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-number" style="color: #2196f3;">{{ info_count }}</div>
+            <div class="stat-label">Information</div>
+        </div>
+    </div>
+
+    <div style="margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-left: 4px solid #003366;">
+        <p style="white-space: pre-line; margin: 0;">{{ executive_summary }}</p>
+    </div>
+
+    <!-- Exception Analysis -->
+    <div class="page-break"></div>
+    <h2>2. Exception Analysis</h2>
+
+    <p>The following exceptions were identified during analysis. Each exception includes:</p>
+    <ul>
+        <li>Severity classification (Critical, Warning, Information)</li>
+        <li>Current specification from drawing</li>
+        <li>Recommended action</li>
+        <li>Technical reasoning and best practice reference</li>
+        <li>Evidence location (when available)</li>
+    </ul>
+
+    {% for exc in exceptions %}
+    <div class="exception-card {{ exc.severity.value }}">
+        <div style="margin-bottom: 8px;">
+            <span class="badge badge-{{ exc.severity.value }}">{{ exc.severity.value }}</span>
+            <span class="badge badge-category">{{ exc.category.value }}</span>
+            {% if exc.defect_risk %}
+            <span class="badge badge-info">Risk: {{ exc.defect_risk.value }}</span>
+            {% endif %}
+        </div>
+
+        <h3 style="margin-top: 8px; margin-bottom: 8px;">{{ exc.title }}</h3>
+
+        <p style="margin: 8px 0;"><strong>Description:</strong> {{ exc.description }}</p>
+
+        {% if exc.current_specification %}
+        <p style="margin: 8px 0;"><strong>Current Specification:</strong> <code>{{ exc.current_specification }}</code></p>
+        {% endif %}
+
+        {% if exc.recommended_change %}
+        <p style="margin: 8px 0; color: #003366;"><strong>Recommended Action:</strong> {{ exc.recommended_change }}</p>
+        {% endif %}
+
+        <p style="margin: 8px 0; font-size: 9pt; color: #666;">
+            <strong>Reasoning:</strong> {{ exc.reasoning }}
+        </p>
+
+        {% if exc.reference %}
+        <p style="margin: 8px 0; font-size: 8pt; color: #999;">
+            <em>Reference: {{ exc.reference }}</em>
+        </p>
+        {% endif %}
+
+        {% if exc.bbox or exc.page_number %}
+        <div class="evidence">
+            <strong>Evidence Location:</strong>
+            {% if exc.page_number %}Page {{ exc.page_number }}{% endif %}
+            {% if exc.bbox %}Coordinates: {{ exc.bbox }}{% endif %}
+        </div>
+        {% endif %}
+
+        {% if exc.probability_score %}
+        <p style="margin: 8px 0; font-size: 8pt;">
+            <strong>Probability Score:</strong> {{ (exc.probability_score * 100)|round|int }}%
+        </p>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Dimensional Analysis -->
+    <div class="page-break"></div>
+    <h2>3. Dimensional Analysis</h2>
+
+    <p>Total dimensions extracted: <strong>{{ dimensions|length }}</strong></p>
+
+    {% if dimensions %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Feature</th>
+                <th>Value</th>
+                <th>Unit</th>
+                <th>Tolerance</th>
+                <th>Page</th>
+                <th>Confidence</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dim in dimensions %}
+            <tr class="dimension-row">
+                <td>{{ loop.index }}</td>
+                <td>{{ dim.feature }}</td>
+                <td>{{ dim.value }}</td>
+                <td>{{ dim.unit }}</td>
+                <td>{{ dim.tolerance or '—' }}</td>
+                <td>{{ dim.bbox.page_number if dim.bbox else '—' }}</td>
+                <td>{{ (dim.confidence * 100)|round|int if dim.confidence else '—' }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p><em>No dimensions extracted from drawing.</em></p>
+    {% endif %}
+
+    <!-- GD&T Specifications -->
+    <div class="page-break"></div>
+    <h2>4. GD&T Specifications</h2>
+
+    <p>Total GD&T specifications found: <strong>{{ gdandt|length }}</strong></p>
+
+    {% if gdandt %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Symbol</th>
+                <th>Tolerance</th>
+                <th>Datum</th>
+                <th>Feature</th>
+                <th>Page</th>
+                <th>Confidence</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for spec in gdandt %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ spec.symbol }}</strong></td>
+                <td>{{ spec.value }}</td>
+                <td>{{ spec.datum_reference or '—' }}</td>
+                <td>{{ spec.feature_description or '—' }}</td>
+                <td>{{ spec.frame_bbox.page_number if spec.frame_bbox else '—' }}</td>
+                <td>{{ (spec.confidence * 100)|round|int if spec.confidence else '—' }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p><em>No GD&T specifications found in drawing.</em></p>
+    {% endif %}
+
+    <!-- Surface Finish -->
+    <h2>5. Surface Finish Requirements</h2>
+
+    {% if surface_finishes %}
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Specification</th>
+                <th>Location</th>
+                <th>Page</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for finish in surface_finishes %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ finish.value }}</strong></td>
+                <td>{{ finish.location or 'General' }}</td>
+                <td>{{ finish.bbox.page_number if finish.bbox else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p><em>No surface finish specifications found.</em></p>
+    {% endif %}
+
+    <!-- General Notes -->
+    <h2>6. General Notes & Specifications</h2>
+
+    {% if notes %}
+    <ul>
+        {% for note in notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p><em>No general notes extracted from drawing.</em></p>
+    {% endif %}
+
+    <!-- Recommendations -->
+    <div class="page-break"></div>
+    <h2>7. Recommendations & Action Items</h2>
+
+    <h3>Required Actions Before Order Acceptance:</h3>
+    <ol>
+        {% for action in action_items %}
+        <li>{{ action }}</li>
+        {% endfor %}
+    </ol>
+
+    <h3>Next Steps:</h3>
+    <ol>
+        <li>Review this detailed report with engineering team</li>
+        <li>Address all CRITICAL exceptions</li>
+        <li>Provide updated drawing or written deviation approval for critical items</li>
+        <li>Review WARNING items and assess risk tolerance</li>
+        <li>Obtain client sign-off on Executive Summary</li>
+        <li>Proceed to FEMA development (Phase 3) once approved</li>
+    </ol>
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #f0f8ff; border-left: 4px solid #2196f3;">
+        <h3 style="margin-top: 0;">Additional Resources Available:</h3>
+        <ul style="margin-bottom: 0;">
+            <li>Chat with AI Expert about this analysis</li>
+            <li>Request simulation analysis (SigmaSoft flow analysis)</li>
+            <li>Access knowledge base of molding standards and best practices</li>
+        </ul>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top: 50px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 8pt; color: #999; text-align: center;">
+        <p>Generated by SME AI Vertex v0.1.0 | {{ analysis_date }}</p>
+        <p>Analysis ID: {{ analysis_id }} | Quality Mode: {{ quality_mode|upper }}</p>
+        <p><em>This report is computer-generated. All findings should be reviewed and validated by qualified engineering personnel.</em></p>
+    </div>
+</body>
+</html>

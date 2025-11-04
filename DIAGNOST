@@ -1,0 +1,34 @@
+# Plan de Diagnóstico - Respuestas Vacías del Chat
+
+## Problema Actual
+- ✅ Sistema no se cuelga (problema anterior resuelto)
+- ❌ **NUEVO PROBLEMA**: Respuestas vacías del chat
+- ❌ Usuario recibe mensajes vacíos en lugar de contenido
+
+## Lista de Tareas
+
+### Fase 1: Diagnóstico del Backend
+- [ ] Verificar logs del backend (consola Python)
+- [ ] Probar endpoint directamente con curl
+- [ ] Revisar estructura de respuesta JSON
+- [ ] Validar ChatService y Vertex AI
+
+### Fase 2: Diagnóstico del Frontend  
+- [ ] Revisar manejo de respuesta JavaScript
+- [ ] Inspeccionar variables de estado (result.response)
+- [ ] Verificar renderizado de mensajes
+- [ ] Comprobar reset de isTyping
+
+### Fase 3: Diagnóstico de Conectividad
+- [ ] Verificar formato JSON entre frontend/backend
+- [ ] Revisar configuración CORS
+- [ ] Comprobar headers HTTP (Content-Type)
+
+### Fase 4: Diagnóstico de Vertex AI
+- [ ] Revisar configuración GCP
+- [ ] Comprobar API keys y permisos
+- [ ] Validar modelo Gemini
+- [ ] Revisar sistema de grounding RAG
+
+## Estado: Iniciando Diagnóstico
+Fecha: 2025-11-03 18:24:11

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Feasibility Report - {{ part_id }}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 1in;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .header {
+            border-bottom: 3px solid #003366;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            color: #003366;
+            margin: 0;
+            font-size: 24pt;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 10pt;
+            margin-top: 5px;
+        }
+
+        .meta-info {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-left: 4px solid #003366;
+            margin-bottom: 20px;
+        }
+
+        .meta-info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta-info td {
+            padding: 5px;
+            font-size: 10pt;
+        }
+
+        .meta-info td:first-child {
+            font-weight: bold;
+            width: 150px;
+        }
+
+        .summary-box {
+            background-color: #fff4e6;
+            border: 2px solid #ff9800;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .summary-box.pass {
+            background-color: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .summary-box.fail {
+            background-color: #ffebee;
+            border-color: #f44336;
+        }
+
+        .summary-box h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16pt;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32pt;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 9pt;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .critical { color: #f44336; }
+        .warning { color: #ff9800; }
+        .info { color: #2196f3; }
+        .pass { color: #4caf50; }
+
+        .exception-list {
+            margin: 20px 0;
+        }
+
+        .exception {
+            border-left: 4px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+        }
+
+        .exception.critical {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+        }
+
+        .exception.warning {
+            border-left-color: #ff9800;
+            background-color: #fff4e6;
+        }
+
+        .exception-title {
+            font-weight: bold;
+            font-size: 12pt;
+            margin-bottom: 8px;
+        }
+
+        .exception-desc {
+            margin-bottom: 8px;
+            font-size: 10pt;
+        }
+
+        .exception-action {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 10pt;
+        }
+
+        .exception-action strong {
+            color: #003366;
+        }
+
+        .signature-section {
+            margin-top: 40px;
+            border-top: 2px solid #003366;
+            padding-top: 20px;
+        }
+
+        .signature-box {
+            border: 1px solid #333;
+            padding: 15px;
+            margin: 15px 0;
+            background-color: #fafafa;
+        }
+
+        .signature-line {
+            margin-top: 40px;
+            border-top: 1px solid #000;
+            width: 60%;
+            padding-top: 5px;
+            font-size: 9pt;
+            color: #666;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 8pt;
+            color: #999;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 10pt;
+            text-transform: uppercase;
+        }
+
+        .risk-high {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .risk-medium {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .risk-low {
+            background-color: #4caf50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Pre-Acceptance Technical Assessment</h1>
+        <div class="subtitle">Exception Report - Injection Molding Feasibility Analysis</div>
+    </div>
+
+    <!-- Part Information -->
+    <div class="meta-info">
+        <table>
+            <tr>
+                <td>Part Number:</td>
+                <td><strong>{{ part_id or 'Not Specified' }}</strong></td>
+            </tr>
+            <tr>
+                <td>Part Name:</td>
+                <td>{{ part_name or 'Not Specified' }}</td>
+            </tr>
+            <tr>
+                <td>Material:</td>
+                <td>{{ material or 'Not Specified' }}</td>
+            </tr>
+            <tr>
+                <td>Analysis Date:</td>
+                <td>{{ analysis_date }}</td>
+            </tr>
+            <tr>
+                <td>Analysis ID:</td>
+                <td><code>{{ analysis_id }}</code></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Summary Box -->
+    <div class="summary-box {% if can_proceed %}pass{% else %}fail{% endif %}">
+        <h2>Assessment Summary</h2>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-number critical">{{ critical_count }}</div>
+                <div class="stat-label">Critical</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number warning">{{ warning_count }}</div>
+                <div class="stat-label">Warnings</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number info">{{ info_count }}</div>
+                <div class="stat-label">Information</div>
+            </div>
+        </div>
+
+        <p style="text-align: center; margin: 20px 0;">
+            <strong>Overall Risk Level:</strong>
+            <span class="risk-badge risk-{{ risk_level }}">{{ risk_level }}</span>
+        </p>
+
+        <p style="font-size: 12pt; text-align: center;">
+            <strong>Can Proceed:</strong>
+            {% if can_proceed %}
+                <span class="pass">YES</span> - Subject to warnings and recommendations
+            {% else %}
+                <span class="critical">NO</span> - Critical issues must be resolved before acceptance
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Executive Summary Text -->
+    <div style="margin: 25px 0;">
+        <h2 style="color: #003366;">Executive Summary</h2>
+        <p style="white-space: pre-line;">{{ executive_summary }}</p>
+    </div>
+
+    <!-- Critical Exceptions Only -->
+    {% if critical_exceptions %}
+    <div class="exception-list">
+        <h2 style="color: #f44336;">Critical Issues Requiring Resolution</h2>
+        <p style="font-size: 10pt; color: #666; margin-bottom: 15px;">
+            The following issues must be addressed before order acknowledgment:
+        </p>
+
+        {% for exc in critical_exceptions %}
+        <div class="exception critical">
+            <div class="exception-title">{{ loop.index }}. {{ exc.title }}</div>
+            <div class="exception-desc">{{ exc.description }}</div>
+            <div class="exception-action">
+                <strong>Recommended Action:</strong> {{ exc.recommended_change }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top Warnings (Max 3) -->
+    {% if warning_exceptions and warning_exceptions|length > 0 %}
+    <div class="exception-list" style="margin-top: 25px;">
+        <h2 style="color: #ff9800;">Key Warnings</h2>
+        <p style="font-size: 10pt; color: #666; margin-bottom: 15px;">
+            These items should be reviewed but do not block acceptance:
+        </p>
+
+        {% for exc in warning_exceptions[:3] %}
+        <div class="exception warning">
+            <div class="exception-title">{{ exc.title }}</div>
+            <div class="exception-desc">{{ exc.description }}</div>
+            <div class="exception-action">
+                <strong>Recommendation:</strong> {{ exc.recommended_change }}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if warning_exceptions|length > 3 %}
+        <p style="font-size: 9pt; font-style: italic; color: #666;">
+            + {{ warning_exceptions|length - 3 }} additional warnings in detailed report
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Signature Section -->
+    <div class="signature-section">
+        <h2 style="color: #003366;">Client Acknowledgment</h2>
+
+        <div class="signature-box">
+            <p>
+                I acknowledge that I have reviewed this Pre-Acceptance Technical Assessment and understand
+                the exceptions noted above. I agree to the recommended changes or accept the risks associated
+                with proceeding with the current specifications.
+            </p>
+
+            {% if not can_proceed %}
+            <p style="color: #f44336; font-weight: bold;">
+                ⚠ CRITICAL: This order cannot be acknowledged until critical issues are resolved
+                and client provides updated specifications or written deviation approval.
+            </p>
+            {% endif %}
+
+            <div style="margin-top: 30px;">
+                <div class="signature-line">
+                    Client Name (Print)
+                </div>
+            </div>
+
+            <div style="margin-top: 30px;">
+                <div class="signature-line">
+                    Signature
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; justify-content: space-between;">
+                <div class="signature-line" style="width: 45%;">
+                    Title
+                </div>
+                <div class="signature-line" style="width: 45%;">
+                    Date
+                </div>
+            </div>
+        </div>
+
+        <p style="font-size: 9pt; color: #666; margin-top: 15px;">
+            <strong>Note:</strong> A detailed technical report with complete analysis, evidence, and page references
+            is available upon request. Contact your project manager for access.
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        Generated by SME AI Vertex v0.1.0 | {{ analysis_date }} | Analysis ID: {{ analysis_id }}<br>
+        This is a computer-generated report. All findings should be reviewed by qualified engineering personnel.
+    </div>
+</body>
+</html>
