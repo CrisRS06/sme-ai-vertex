@@ -12,17 +12,26 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import structlog
-from google.api_core.exceptions import FailedPrecondition, NotFound
-from google.cloud.aiplatform.matching_engine import (
-    MatchEngineIndexDatapoint,
-    MatchEngineProxyDatapointRestriction,
-)
 
-from src.config.gcp_clients import (
-    get_vector_search_endpoint,
-    get_vector_search_index,
-    init_vertex_ai,
-)
+# MVP MODE: Disable Vertex AI Vector Search imports (use SQLite fallback)
+# Uncomment for production with GCP credentials:
+# from google.api_core.exceptions import FailedPrecondition, NotFound
+# from google.cloud.aiplatform.matching_engine import (
+#     MatchEngineIndexDatapoint,
+#     MatchEngineProxyDatapointRestriction,
+# )
+
+# MVP MODE: Skip GCP imports for local development
+try:
+    from src.config.gcp_clients import (
+        get_vector_search_endpoint,
+        get_vector_search_index,
+        init_vertex_ai,
+    )
+    GCP_AVAILABLE = True
+except Exception:
+    GCP_AVAILABLE = False
+
 from src.config.settings import settings
 from src.services.vector_registry import get_vector_registry
 
@@ -76,9 +85,13 @@ class VertexAIVectorSearchService(BaseVectorSearchService):
     """
     Implementación gestionada usando Vertex AI Vector Search.
     Requiere index + endpoint + deployed index configurados en settings.
+
+    MVP MODE: Disabled when GCP not available (fallback to SQLite).
     """
 
     def __init__(self):
+        if not GCP_AVAILABLE:
+            raise RuntimeError("GCP not available - use SQLite fallback")
         init_vertex_ai()
         self.index = get_vector_search_index()
         self.endpoint = get_vector_search_endpoint()
@@ -113,24 +126,26 @@ class VertexAIVectorSearchService(BaseVectorSearchService):
         datapoints = []
         for page_number, gcs_uri, embedding, metadata in embeddings:
             datapoint_id = f"{document_id}__{page_number}"
-            restricts = []
-            for key, value in (metadata or {}).items():
-                if value is None:
-                    continue
-                restricts.append(
-                    MatchEngineProxyDatapointRestriction(
-                        namespace=key,
-                        allow_tokens=[str(value)],
-                    )
-                )
+            # MVP MODE: Placeholder (GCP not available)
+            # restricts = []
+            # for key, value in (metadata or {}).items():
+            #     if value is None:
+            #         continue
+            #     restricts.append(
+            #         MatchEngineProxyDatapointRestriction(
+            #             namespace=key,
+            #             allow_tokens=[str(value)],
+            #         )
+            #     )
 
-            datapoints.append(
-                MatchEngineIndexDatapoint(
-                    datapoint_id=datapoint_id,
-                    feature_vector=np.asarray(embedding, dtype=np.float32),
-                    restricts=restricts,
-                )
-            )
+            # datapoints.append(
+            #     MatchEngineIndexDatapoint(
+            #         datapoint_id=datapoint_id,
+            #         feature_vector=np.asarray(embedding, dtype=np.float32),
+            #         restricts=restricts,
+            #     )
+            # )
+            raise RuntimeError("GCP Vector Search not available in MVP mode")
 
         if not datapoints:
             logger.warning("vertex_ai_no_embeddings_to_store", document_id=document_id)
@@ -158,15 +173,17 @@ class VertexAIVectorSearchService(BaseVectorSearchService):
         min_similarity: float = 0.0,
         filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> List[VectorSearchResult]:
-        filter_configs = []
-        if filter_metadata:
-            for key, value in filter_metadata.items():
-                filter_configs.append(
-                    MatchEngineProxyDatapointRestriction(
-                        namespace=key,
-                        allow_tokens=[str(value)],
-                    )
-                )
+        # MVP MODE: GCP not available
+        raise RuntimeError("GCP Vector Search not available in MVP mode")
+        # filter_configs = []
+        # if filter_metadata:
+        #     for key, value in filter_metadata.items():
+        #         filter_configs.append(
+        #             MatchEngineProxyDatapointRestriction(
+        #                 namespace=key,
+        #                 allow_tokens=[str(value)],
+        #             )
+        #         )
 
         response = self.endpoint.find_neighbors(
             deployed_index_id=self.deployed_index_id,
