@@ -47,6 +47,59 @@ class SurfaceFinish(BaseModel):
     bbox: Optional[BoundingBox] = None
 
 
+class DraftAngle(BaseModel):
+    """Draft angle measurement for a surface."""
+    surface_description: str = Field(..., description="Description of the surface (e.g., 'outer wall', 'boss side face')")
+    angle_degrees: Optional[float] = Field(None, description="Draft angle in degrees")
+    angle_specification: Optional[str] = Field(None, description="Draft angle callout from drawing if present")
+    is_adequate: Optional[bool] = Field(None, description="Whether draft angle meets minimum requirements")
+    direction: Optional[str] = Field(None, description="Direction of draft (e.g., 'vertical', 'horizontal')")
+    bbox: Optional[BoundingBox] = None
+
+
+class Undercut(BaseModel):
+    """Undercut feature that may require special tooling."""
+    location: str = Field(..., description="Location/description of undercut feature")
+    geometry_type: Optional[str] = Field(None, description="Type of undercut (e.g., 'internal thread', 'hole perpendicular to draw', 'snap fit')")
+    requires_action: str = Field(..., description="Required tooling action (e.g., 'side action', 'lifter', 'hand load', 'unscrewing device')")
+    complexity: Optional[str] = Field(None, description="Complexity level (simple/moderate/complex)")
+    bbox: Optional[BoundingBox] = None
+
+
+class WallThicknessAnalysis(BaseModel):
+    """Overall wall thickness analysis."""
+    minimum_mm: Optional[float] = Field(None, description="Minimum wall thickness in mm")
+    maximum_mm: Optional[float] = Field(None, description="Maximum wall thickness in mm")
+    nominal_mm: Optional[float] = Field(None, description="Nominal/average wall thickness in mm")
+    is_uniform: Optional[bool] = Field(None, description="Whether wall thickness is reasonably uniform")
+    variation_ratio: Optional[float] = Field(None, description="Max/min thickness ratio (should be <2:1 ideally)")
+    thin_sections: List[str] = Field(default_factory=list, description="Descriptions of problematically thin sections")
+    thick_sections: List[str] = Field(default_factory=list, description="Descriptions of problematically thick sections")
+
+
+class PartingLineSuggestion(BaseModel):
+    """Suggested parting line location."""
+    description: str = Field(..., description="Description of suggested parting line location")
+    orientation: Optional[str] = Field(None, description="Parting line orientation (e.g., 'horizontal at mid-height', 'vertical')")
+    complexity: Optional[str] = Field(None, description="Parting line complexity (straight/stepped/complex)")
+    reasoning: Optional[str] = Field(None, description="Why this parting line makes sense")
+
+
+class GatingPoint(BaseModel):
+    """Suggested gate location or gating system."""
+    location: str = Field(..., description="Gate location description")
+    gate_type: Optional[str] = Field(None, description="Type of gate (e.g., 'edge gate', 'sub gate', 'hot runner')")
+    reasoning: Optional[str] = Field(None, description="Why this gate location is recommended")
+    runner_system: Optional[str] = Field(None, description="Runner system description if shown in drawing")
+
+
+class EjectionSystem(BaseModel):
+    """Ejection system details."""
+    ejector_pin_locations: List[str] = Field(default_factory=list, description="Locations of ejector pins if shown")
+    ejection_method: Optional[str] = Field(None, description="Ejection method (e.g., 'ejector pins', 'stripper plate', 'air ejection')")
+    notes: Optional[str] = Field(None, description="Any ejection-related notes from drawing")
+
+
 class DrawingAnalysis(BaseModel):
     """
     Complete analysis of a technical drawing.
@@ -73,6 +126,37 @@ class DrawingAnalysis(BaseModel):
     surface_finishes: List[SurfaceFinish] = Field(
         default_factory=list,
         description="Surface finish requirements"
+    )
+
+    # NEW: Injection molding-specific analysis
+    draft_angles: List[DraftAngle] = Field(
+        default_factory=list,
+        description="Draft angle measurements for moldability"
+    )
+
+    undercuts: List[Undercut] = Field(
+        default_factory=list,
+        description="Undercut features requiring special tooling"
+    )
+
+    wall_thickness: Optional[WallThicknessAnalysis] = Field(
+        None,
+        description="Overall wall thickness analysis"
+    )
+
+    parting_line_suggestions: List[PartingLineSuggestion] = Field(
+        default_factory=list,
+        description="Suggested parting line locations"
+    )
+
+    gating_points: List[GatingPoint] = Field(
+        default_factory=list,
+        description="Suggested gate locations or gating system if shown"
+    )
+
+    ejection_system: Optional[EjectionSystem] = Field(
+        None,
+        description="Ejection system details if shown in drawing"
     )
 
     # General notes and specifications
@@ -172,6 +256,93 @@ DRAWING_ANALYSIS_RESPONSE_SCHEMA = {
                     }
                 },
                 "required": ["value"]
+            }
+        },
+        "draft_angles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "surface_description": {"type": "string"},
+                    "angle_degrees": {"type": "number"},
+                    "angle_specification": {"type": "string"},
+                    "is_adequate": {"type": "boolean"},
+                    "direction": {"type": "string"},
+                    "bbox": {
+                        "type": "object",
+                        "properties": {
+                            "coordinates": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+                            "page_number": {"type": "integer"}
+                        }
+                    }
+                },
+                "required": ["surface_description"]
+            }
+        },
+        "undercuts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"},
+                    "geometry_type": {"type": "string"},
+                    "requires_action": {"type": "string"},
+                    "complexity": {"type": "string"},
+                    "bbox": {
+                        "type": "object",
+                        "properties": {
+                            "coordinates": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+                            "page_number": {"type": "integer"}
+                        }
+                    }
+                },
+                "required": ["location", "requires_action"]
+            }
+        },
+        "wall_thickness": {
+            "type": "object",
+            "properties": {
+                "minimum_mm": {"type": "number"},
+                "maximum_mm": {"type": "number"},
+                "nominal_mm": {"type": "number"},
+                "is_uniform": {"type": "boolean"},
+                "variation_ratio": {"type": "number"},
+                "thin_sections": {"type": "array", "items": {"type": "string"}},
+                "thick_sections": {"type": "array", "items": {"type": "string"}}
+            }
+        },
+        "parting_line_suggestions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "orientation": {"type": "string"},
+                    "complexity": {"type": "string"},
+                    "reasoning": {"type": "string"}
+                },
+                "required": ["description"]
+            }
+        },
+        "gating_points": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"},
+                    "gate_type": {"type": "string"},
+                    "reasoning": {"type": "string"},
+                    "runner_system": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        },
+        "ejection_system": {
+            "type": "object",
+            "properties": {
+                "ejector_pin_locations": {"type": "array", "items": {"type": "string"}},
+                "ejection_method": {"type": "string"},
+                "notes": {"type": "string"}
             }
         },
         "notes": {

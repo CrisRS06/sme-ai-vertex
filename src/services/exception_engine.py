@@ -144,6 +144,13 @@ class ExceptionEngine:
             exceptions.extend(self._check_defect_risks(analysis))
             exceptions.extend(self._check_material_compatibility(analysis))
 
+            # NEW: Expanded technical category checks
+            exceptions.extend(self._check_undercuts(analysis))
+            exceptions.extend(self._check_parting_line(analysis))
+            exceptions.extend(self._check_gating(analysis))
+            exceptions.extend(self._check_shrinkage_warpage(analysis))
+            exceptions.extend(self._check_press_capabilities(analysis))
+
             # Generate summary
             summary = self._generate_summary(exceptions)
 
@@ -404,6 +411,249 @@ class ExceptionEngine:
                          "tolerance capabilities. Material must be specified for accurate feasibility assessment.",
                 reference="Material specification requirement"
             ))
+
+        return exceptions
+
+    def _check_undercuts(self, analysis: DrawingAnalysis) -> List[MoldingException]:
+        """Check for undercut features that require special tooling."""
+        exceptions = []
+
+        # Check undercuts extracted by VLM
+        for undercut in analysis.undercuts:
+            severity = ExceptionSeverity.CRITICAL if "slide" in undercut.requires_action.lower() or \
+                                                      "lifter" in undercut.requires_action.lower() else \
+                       ExceptionSeverity.WARNING
+
+            exceptions.append(MoldingException(
+                exception_id=str(uuid.uuid4()),
+                severity=severity,
+                category=ExceptionCategory.UNDERCUT,
+                title=f"Undercut detected: {undercut.location}",
+                description=f"Feature '{undercut.location}' contains an undercut ({undercut.geometry_type or 'type not specified'}) "
+                           f"that requires {undercut.requires_action} for manufacturing.",
+                current_specification=f"Undercut feature: {undercut.geometry_type or 'geometry type not specified'}",
+                recommended_change=f"Accept {undercut.requires_action} (increases tooling cost) or modify geometry to eliminate undercut",
+                reasoning=f"Undercuts prevent straight pull from mold and require {undercut.requires_action}. "
+                         f"This adds complexity and cost to the mold. Side actions typically add $5,000-$15,000 to tooling cost.",
+                reference="Rule UC001 - Undercut handling",
+                bbox=undercut.bbox.coordinates if undercut.bbox else None,
+                defect_risk=DefectType.EJECTION_ISSUE,
+                probability_score=0.8 if severity == ExceptionSeverity.CRITICAL else 0.5
+            ))
+
+        # If no undercuts detected but part has complex geometry, flag as info
+        if not analysis.undercuts and len(analysis.dimensions) > 10:
+            exceptions.append(MoldingException(
+                exception_id=str(uuid.uuid4()),
+                severity=ExceptionSeverity.INFO,
+                category=ExceptionCategory.UNDERCUT,
+                title="Undercut analysis completed - none detected",
+                description="No undercuts detected in drawing analysis. Verify no hidden features prevent straight pull.",
+                current_specification="No undercuts found",
+                recommended_change="Review 3D geometry to confirm no hidden undercuts",
+                reasoning="Complex parts may have undercuts not visible in 2D views.",
+                reference="Best practice - undercut verification"
+            ))
+
+        return exceptions
+
+    def _check_parting_line(self, analysis: DrawingAnalysis) -> List[MoldingException]:
+        """Analyze parting line suggestions."""
+        exceptions = []
+
+        if not analysis.parting_line_suggestions:
+            # No parting line suggested - flag as info
+            exceptions.append(MoldingException(
+                exception_id=str(uuid.uuid4()),
+                severity=ExceptionSeverity.INFO,
+                category=ExceptionCategory.PARTING_LINE,
+                title="No parting line specified",
+                description="Drawing does not specify preferred parting line location. "
+                           "Mold designer will determine optimal parting line.",
+                current_specification="No parting line specification",
+                recommended_change="Consider specifying parting line if cosmetic appearance on split line is critical",
+                reasoning="Parting line location affects appearance (flash line visible), tooling complexity, "
+                         "and ejection. Customer may want to specify for aesthetic parts.",
+                reference="Best practice - parting line specification"
+            ))
+        else:
+            # Analyze suggested parting lines
+            for pl in analysis.parting_line_suggestions:
+                if pl.complexity and pl.complexity.lower() == "complex":
+                    exceptions.append(MoldingException(
+                        exception_id=str(uuid.uuid4()),
+                        severity=ExceptionSeverity.WARNING,
+                        category=ExceptionCategory.PARTING_LINE,
+                        title=f"Complex parting line: {pl.description}",
+                        description=f"Suggested parting line '{pl.description}' has complex geometry. "
+                                   f"Reasoning: {pl.reasoning or 'Not specified'}",
+                        current_specification=f"Complex parting line - {pl.orientation or 'orientation not specified'}",
+                        recommended_change="Complex parting lines increase tooling cost. Simplify geometry if possible.",
+                        reasoning="Stepped or complex parting lines require more machining time and may have "
+                                 "tighter fit requirements to prevent flash.",
+                        reference="Rule PL001 - Parting line complexity"
+                    ))
+
+        return exceptions
+
+    def _check_gating(self, analysis: DrawingAnalysis) -> List[MoldingException]:
+        """Check gating and runner system if specified."""
+        exceptions = []
+
+        if not analysis.gating_points:
+            # No gating specified - this is normal for most drawings
+            exceptions.append(MoldingException(
+                exception_id=str(uuid.uuid4()),
+                severity=ExceptionSeverity.INFO,
+                category=ExceptionCategory.GATING,
+                title="No gate location specified",
+                description="Drawing does not specify gate location. Mold designer will determine optimal gate placement.",
+                current_specification="No gating specification",
+                recommended_change="Consider specifying gate location if witness marks must be avoided in critical areas",
+                reasoning="Gate location affects fill pattern, weld lines, and leaves witness marks. "
+                         "For cosmetic parts, customer may want to specify gate location.",
+                reference="Best practice - gate location"
+            ))
+        else:
+            # Analyze suggested gates
+            for gate in analysis.gating_points:
+                # Check if gate type is specified
+                if gate.gate_type and "hot runner" in gate.gate_type.lower():
+                    exceptions.append(MoldingException(
+                        exception_id=str(uuid.uuid4()),
+                        severity=ExceptionSeverity.INFO,
+                        category=ExceptionCategory.GATING,
+                        title=f"Hot runner system specified: {gate.location}",
+                        description=f"Gate location '{gate.location}' specifies hot runner system. "
+                                   f"Reasoning: {gate.reasoning or 'Not specified'}",
+                        current_specification=f"Hot runner at {gate.location}",
+                        recommended_change="Hot runner systems add $10,000-$30,000+ to tooling cost but eliminate "
+                                          "runner waste and reduce cycle time.",
+                        reasoning="Hot runners are beneficial for high-volume production but have high upfront cost.",
+                        reference="Rule GT001 - Hot runner considerations"
+                    ))
+
+        return exceptions
+
+    def _check_shrinkage_warpage(self, analysis: DrawingAnalysis) -> List[MoldingException]:
+        """Predict shrinkage and warpage risks based on material and geometry."""
+        exceptions = []
+
+        if not analysis.material:
+            return exceptions  # Can't predict without material
+
+        material = analysis.material.upper()
+
+        # Material shrinkage data (typical ranges)
+        shrinkage_data = {
+            "PP": {"min": 1.0, "max": 2.5, "risk": "high"},
+            "PP+GF": {"min": 0.3, "max": 0.8, "risk": "medium"},
+            "ABS": {"min": 0.4, "max": 0.7, "risk": "low"},
+            "PC": {"min": 0.5, "max": 0.7, "risk": "low"},
+            "PA6": {"min": 0.8, "max": 2.0, "risk": "high"},
+            "PA6+GF": {"min": 0.2, "max": 0.6, "risk": "low"},
+            "POM": {"min": 1.8, "max": 2.2, "risk": "high"},
+        }
+
+        # Find matching material
+        shrink_info = None
+        for mat_key, data in shrinkage_data.items():
+            if mat_key in material or material in mat_key:
+                shrink_info = data
+                break
+
+        if shrink_info:
+            if shrink_info["risk"] == "high":
+                exceptions.append(MoldingException(
+                    exception_id=str(uuid.uuid4()),
+                    severity=ExceptionSeverity.WARNING,
+                    category=ExceptionCategory.SHRINKAGE_WARPAGE,
+                    title=f"High shrinkage material: {analysis.material}",
+                    description=f"Material {analysis.material} has high shrinkage rate "
+                               f"({shrink_info['min']}-{shrink_info['max']}%), "
+                               f"which may affect dimensional accuracy and cause warpage.",
+                    current_specification=f"Material: {analysis.material}",
+                    recommended_change=f"Account for {shrink_info['min']}-{shrink_info['max']}% shrinkage in tooling. "
+                                      f"Consider glass-filled grade to reduce shrinkage.",
+                    reasoning="High-shrinkage materials are more difficult to hold tight tolerances and more prone "
+                             "to warpage, especially on large flat parts. Shrinkage varies with wall thickness, "
+                             "flow direction, and process conditions.",
+                    reference="Rule SW001 - Material shrinkage considerations",
+                    defect_risk=DefectType.WARP,
+                    probability_score=0.6
+                ))
+
+        # Check wall thickness analysis for warpage risk
+        if analysis.wall_thickness:
+            wt = analysis.wall_thickness
+            if wt.variation_ratio and wt.variation_ratio > 2.0:
+                exceptions.append(MoldingException(
+                    exception_id=str(uuid.uuid4()),
+                    severity=ExceptionSeverity.WARNING,
+                    category=ExceptionCategory.SHRINKAGE_WARPAGE,
+                    title=f"Non-uniform wall thickness - warpage risk",
+                    description=f"Part has wall thickness variation ratio of {wt.variation_ratio:.1f}:1 "
+                               f"(min: {wt.minimum_mm}mm, max: {wt.maximum_mm}mm). "
+                               f"Non-uniform walls cause differential shrinkage and warpage.",
+                    current_specification=f"Wall thickness range: {wt.minimum_mm}mm - {wt.maximum_mm}mm",
+                    recommended_change=f"Reduce variation to <2:1 ratio. Transition gradually between thick and thin sections.",
+                    reasoning="Thick sections shrink more than thin sections, creating internal stress and warpage. "
+                             "Aim for uniform wall thickness throughout part.",
+                    reference="Rule SW002 - Wall thickness uniformity",
+                    defect_risk=DefectType.WARP,
+                    probability_score=0.7
+                ))
+
+        return exceptions
+
+    def _check_press_capabilities(self, analysis: DrawingAnalysis) -> List[MoldingException]:
+        """Validate part can be molded on available presses."""
+        exceptions = []
+
+        # This requires loading plant_capabilities.json
+        # For now, implement basic heuristics
+        # TODO: Load actual plant capabilities from data/plant_capabilities.json
+
+        # Estimate part volume/weight to check if press is adequate
+        # Look for overall dimensions
+        overall_dims = [
+            d for d in analysis.dimensions
+            if any(kw in d.feature.lower() for kw in ["overall", "length", "width", "height", "diameter"])
+        ]
+
+        if len(overall_dims) >= 2:
+            # Rough volume estimate (very simplified)
+            dim_values_mm = []
+            for dim in overall_dims[:3]:  # Max 3 dimensions
+                val_mm = dim.value if dim.unit == "mm" else dim.value * 25.4
+                dim_values_mm.append(val_mm)
+
+            if len(dim_values_mm) >= 2:
+                # Calculate projected area (for tonnage estimate)
+                projected_area_cm2 = (dim_values_mm[0] * dim_values_mm[1]) / 100
+
+                # Rule of thumb: 2-5 tons per square inch of projected area
+                # Converting: 1 in² ≈ 6.45 cm²
+                projected_area_in2 = projected_area_cm2 / 6.45
+                estimated_tonnage_min = projected_area_in2 * 2
+                estimated_tonnage_max = projected_area_in2 * 5
+
+                # Check against typical small-medium shop capabilities (35-150 tons)
+                if estimated_tonnage_min > 150:
+                    exceptions.append(MoldingException(
+                        exception_id=str(uuid.uuid4()),
+                        severity=ExceptionSeverity.CRITICAL,
+                        category=ExceptionCategory.PRESS_CAPABILITY,
+                        title=f"Part may exceed press capacity",
+                        description=f"Based on projected area (~{projected_area_cm2:.0f} cm²), "
+                                   f"estimated required tonnage is {estimated_tonnage_min:.0f}-{estimated_tonnage_max:.0f} tons. "
+                                   f"This may exceed available press capacity.",
+                        current_specification=f"Projected area: ~{projected_area_cm2:.0f} cm²",
+                        recommended_change="Verify press capacity with plant. May need to reduce part size or split into multiple components.",
+                        reasoning="Insufficient press tonnage leads to flash, short shots, or mold damage. "
+                                 "Tonnage requirement is proportional to projected area and injection pressure.",
+                        reference="Rule PC001 - Press tonnage requirements"
+                    ))
 
         return exceptions
 

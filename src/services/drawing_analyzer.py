@@ -119,14 +119,57 @@ EXTRACT:
    - Finish specification (e.g., "Ra 1.6", "32 RMS", "N6")
    - Location/surfaces it applies to
 
-5. **General Notes**
+5. **Injection Molding Analysis** (NEW - CRITICAL for manufacturability)
+
+   a) **Draft Angles**
+      - Identify vertical/sloped surfaces
+      - Extract draft angle specifications if shown
+      - Evaluate if draft appears adequate (min 0.5°, recommend 1.5°)
+      - Note surfaces with no draft or insufficient draft
+
+   b) **Undercuts**
+      - Identify any features that prevent straight pull from mold:
+        * Internal threads
+        * Holes perpendicular to draw direction
+        * Snap fits
+        * Side holes or features
+        * Recesses that require side action
+      - Specify what tooling action is required (slide, lifter, hand load, unscrewing device)
+      - Assess complexity (simple/moderate/complex)
+
+   c) **Wall Thickness Analysis**
+      - Identify minimum wall thickness (mm)
+      - Identify maximum wall thickness (mm)
+      - Calculate nominal/average wall thickness
+      - Assess if wall thickness is uniform (variation ratio <2:1 is ideal)
+      - Flag any problematically thin sections (<0.8mm)
+      - Flag any problematically thick sections (>4mm - sink risk)
+
+   d) **Parting Line Suggestions**
+      - Based on part geometry, suggest where mold should split
+      - Describe orientation (horizontal/vertical/angled)
+      - Assess complexity (straight/stepped/complex)
+      - Provide reasoning for suggested parting line
+
+   e) **Gating Points**
+      - If gate location is specified in drawing, extract it
+      - If runner system is shown, describe it
+      - Note gate type if specified (edge/sub/pin/hot runner)
+      - Suggest optimal gate location based on geometry if not specified
+
+   f) **Ejection System**
+      - If ejector pin locations are marked, extract them
+      - Note ejection method if specified (pins/stripper plate/air)
+      - Flag any ejection-related notes
+
+6. **General Notes**
    - Manufacturing instructions
    - Material specifications
    - Finish requirements
    - Assembly notes
    - ANY specifications or requirements mentioned
 
-6. **Drawing Metadata**
+7. **Drawing Metadata**
    - Scale
    - Default units
    - Projection type (First Angle / Third Angle)
