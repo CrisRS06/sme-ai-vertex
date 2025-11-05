@@ -1,0 +1,212 @@
+{
+  "_comment": "Plant Capabilities Knowledge Base - Micro Manufacturing",
+  "version": "1.0.0",
+  "last_updated": "2025-11-05",
+  "facility": {
+    "name": "Micro Manufacturing - Main Plant",
+    "location": "United States",
+    "certifications": ["ISO 9001", "ISO 13485 (Medical)"]
+  },
+  "injection_molding_presses": [
+    {
+      "press_id": "PR-001",
+      "manufacturer": "Engel",
+      "model": "Victory 80",
+      "tonnage_tons": 80,
+      "shot_size_oz": 3.5,
+      "shot_size_grams": 99.2,
+      "platen_size_mm": {
+        "width": 400,
+        "height": 400
+      },
+      "tie_bar_spacing_mm": 320,
+      "min_mold_height_mm": 150,
+      "max_mold_height_mm": 450,
+      "status": "active",
+      "typical_materials": ["ABS", "PP", "PC", "PA6", "POM"],
+      "notes": "Primary press for medium parts"
+    },
+    {
+      "press_id": "PR-002",
+      "manufacturer": "Arburg",
+      "model": "Allrounder 270",
+      "tonnage_tons": 150,
+      "shot_size_oz": 6.8,
+      "shot_size_grams": 192.8,
+      "platen_size_mm": {
+        "width": 500,
+        "height": 500
+      },
+      "tie_bar_spacing_mm": 400,
+      "min_mold_height_mm": 200,
+      "max_mold_height_mm": 600,
+      "status": "active",
+      "typical_materials": ["ABS", "PC/ABS", "PP", "PA6", "PA66", "POM"],
+      "notes": "High-precision press with closed-loop control"
+    },
+    {
+      "press_id": "PR-003",
+      "manufacturer": "Boy",
+      "model": "35M",
+      "tonnage_tons": 35,
+      "shot_size_oz": 1.2,
+      "shot_size_grams": 34.0,
+      "platen_size_mm": {
+        "width": 250,
+        "height": 250
+      },
+      "tie_bar_spacing_mm": 200,
+      "min_mold_height_mm": 100,
+      "max_mold_height_mm": 300,
+      "status": "active",
+      "typical_materials": ["ABS", "PP", "PC", "PMMA"],
+      "notes": "Small parts & micro molding"
+    }
+  ],
+  "tolerances": {
+    "standard_precision": {
+      "description": "Standard molding tolerances (DIN 16742)",
+      "dimensions": {
+        "0_to_3mm": "±0.10mm",
+        "3_to_6mm": "±0.12mm",
+        "6_to_30mm": "±0.15mm",
+        "30_to_120mm": "±0.30mm",
+        "120_to_400mm": "±0.60mm"
+      }
+    },
+    "precision_tooling": {
+      "description": "High-precision tooling (additional cost)",
+      "dimensions": {
+        "0_to_3mm": "±0.05mm",
+        "3_to_6mm": "±0.06mm",
+        "6_to_30mm": "±0.08mm",
+        "30_to_120mm": "±0.15mm"
+      },
+      "notes": "Requires precision mold, tighter process control, longer cycle time"
+    }
+  },
+  "materials_in_stock": [
+    {
+      "material": "ABS",
+      "grades": ["General Purpose", "High Impact", "Flame Retardant (UL94 V-0)"],
+      "suppliers": ["SABIC", "LG Chem"],
+      "shrinkage_range": "0.4-0.7%",
+      "typical_applications": "Housings, consumer products, automotive interior"
+    },
+    {
+      "material": "Polypropylene (PP)",
+      "grades": ["Homopolymer", "Copolymer", "30% Glass Filled"],
+      "suppliers": ["ExxonMobil", "LyondellBasell"],
+      "shrinkage_range": "1.0-2.5%",
+      "typical_applications": "Living hinges, containers, automotive"
+    },
+    {
+      "material": "Polycarbonate (PC)",
+      "grades": ["Clear", "FR (flame retardant)", "UV Stabilized"],
+      "suppliers": ["Covestro", "SABIC"],
+      "shrinkage_range": "0.5-0.7%",
+      "typical_applications": "Optical, medical devices, safety equipment"
+    },
+    {
+      "material": "Polyamide 6 (PA6/Nylon 6)",
+      "grades": ["Natural", "30% Glass Filled", "Heat Stabilized"],
+      "suppliers": ["BASF", "DSM"],
+      "shrinkage_range": "0.8-2.0%",
+      "typical_applications": "Mechanical parts, gears, bearings"
+    },
+    {
+      "material": "Polyoxymethylene (POM/Acetal)",
+      "grades": ["Homopolymer (Delrin)", "Copolymer"],
+      "suppliers": ["DuPont", "Celanese"],
+      "shrinkage_range": "1.8-2.2%",
+      "typical_applications": "Precision parts, gears, bushings"
+    }
+  ],
+  "mold_capabilities": {
+    "in_house_capabilities": [
+      "Mold repair & maintenance",
+      "Minor modifications (gate location, venting)",
+      "Sample mold trials"
+    ],
+    "external_partners": [
+      "Full mold design & build",
+      "Hot runner systems",
+      "Multi-cavity molds (up to 8 cavities)",
+      "Complex slides & lifters"
+    ],
+    "typical_lead_times": {
+      "simple_mold_2_cavity": "6-8 weeks",
+      "complex_mold_4_cavity_slides": "10-14 weeks"
+    }
+  },
+  "secondary_operations": {
+    "available_in_house": [
+      "Assembly (ultrasonic welding, snap-fit)",
+      "Pad printing",
+      "Light machining (drilling, tapping)",
+      "Quality inspection (CMM available)"
+    ],
+    "outsourced": [
+      "Painting/coating",
+      "Laser etching",
+      "Insert molding (metal inserts)",
+      "Complex post-processing"
+    ]
+  },
+  "quality_capabilities": {
+    "inspection_equipment": [
+      "CMM (Coordinate Measuring Machine) - 500x500x400mm",
+      "Optical comparator",
+      "Calipers, micrometers (±0.001mm accuracy)",
+      "Hardness tester",
+      "Visual inspection stations"
+    ],
+    "quality_standards": [
+      "First Article Inspection (FAI)",
+      "PPAP (Production Part Approval Process)",
+      "In-process inspection (SPC charts)",
+      "Final inspection 100% or sampling per AQL"
+    ]
+  },
+  "design_for_manufacturing_guidelines": {
+    "wall_thickness": {
+      "minimum_mm": 0.8,
+      "recommended_mm": 1.5,
+      "maximum_mm": 4.0,
+      "notes": "Thinner walls require precision tooling and may have fill issues. Thicker walls increase cycle time and sink risk."
+    },
+    "draft_angles": {
+      "minimum_degrees": 0.5,
+      "recommended_degrees": 1.5,
+      "textured_surfaces_degrees": 2.5,
+      "notes": "Inadequate draft causes ejection issues and part damage"
+    },
+    "undercuts": {
+      "acceptable_with_slides": true,
+      "max_slide_travel_mm": 50,
+      "acceptable_with_hand_loads": true,
+      "notes": "Undercuts significantly increase tooling cost. Consider redesign if possible."
+    },
+    "corner_radii": {
+      "minimum_inside_radius_mm": 0.3,
+      "recommended_inside_radius_mm": 0.5,
+      "notes": "Sharp corners cause stress concentration and mold wear"
+    }
+  },
+  "cost_drivers": {
+    "tooling": {
+      "simple_single_cavity": "$5,000 - $15,000",
+      "complex_multi_cavity": "$30,000 - $100,000+",
+      "factors": ["Part complexity", "Number of cavities", "Slides/lifters", "Surface finish"]
+    },
+    "part_cost": {
+      "factors": ["Material cost", "Cycle time", "Scrap rate", "Secondary operations"],
+      "typical_cycle_time_seconds": "15-45"
+    }
+  },
+  "notes": [
+    "This is a STUB for development. Real capabilities should be verified with plant manager.",
+    "All specifications subject to part-specific validation.",
+    "Contact engineering@company.com for capabilities not listed here."
+  ]
+}
