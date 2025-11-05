@@ -208,7 +208,8 @@ class ExceptionEngine:
                     description=f"Feature '{dim.feature}' has wall thickness of {value_mm:.2f}mm, "
                                f"which is below the minimum manufacturable thickness of 0.6mm.",
                     current_specification=f"{dim.value} {dim.unit}",
-                    recommended_change="Increase wall thickness to minimum 0.6mm (recommended 1.0mm or greater)",
+                    recommended_change="NOT VIABLE as specified. Cannot proceed with wall thickness below 0.6mm. "
+                                      "Client must revise specification to minimum 0.6mm (recommended 1.0mm) OR accept high risk of short shots.",
                     reasoning="Wall thickness below 0.6mm is difficult to fill consistently and may result "
                              "in short shots, incomplete filling, or excessive injection pressures. "
                              "As mentioned in feasibility review, micro cannot reliably mold below 0.6mm.",
@@ -228,7 +229,8 @@ class ExceptionEngine:
                     description=f"Feature '{dim.feature}' has wall thickness of {value_mm:.2f}mm, "
                                f"which may cause sink marks and long cycle times.",
                     current_specification=f"{dim.value} {dim.unit}",
-                    recommended_change="Reduce to 3-4mm maximum or add coring to reduce thickness",
+                    recommended_change="Viable with RISK of sink marks and longer cycle time. "
+                                      "Client may accept as-is OR loosen cosmetic finish requirements to tolerate sink marks.",
                     reasoning="Thick sections cool slowly and may result in sink marks, voids, or warpage. "
                              "They also increase cycle time significantly.",
                     reference="Rule WT002 - Maximum wall thickness",
@@ -297,7 +299,8 @@ class ExceptionEngine:
                 title="No draft angles specified",
                 description="Drawing does not specify draft angles. All vertical walls require draft for ejection.",
                 current_specification="No draft specification found",
-                recommended_change="Add minimum 0.5° draft on all vertical surfaces (1.5° recommended)",
+                recommended_change="ASSUME minimum 0.5° draft will be incorporated in tooling (1.5° preferred). "
+                                  "Client must confirm this assumption OR specify exact draft requirements.",
                 reasoning="Without draft angles, parts may stick in the mold or require excessive ejection force, "
                          "leading to damage or deformation.",
                 reference="Rule DA001 - Minimum draft requirements"
@@ -384,7 +387,8 @@ class ExceptionEngine:
                 description=f"Part has large dimensions ({len(large_dims)} features >100mm) which may warp during cooling. "
                            f"Material: {analysis.material}",
                 current_specification=f"Large features with tight tolerances",
-                recommended_change="Consider adding ribs for rigidity, or relax tolerances accounting for warp",
+                recommended_change="Viable with RISK of warpage. Client may accept as-is OR loosen flatness/dimensional tolerances "
+                                  "to account for typical warp (0.010-0.020 inch for large parts).",
                 reasoning="Large flat parts tend to warp during cooling due to differential shrinkage. "
                          "Gen6 case study showed 12 thousandths warp on similar geometry.",
                 reference="Gen6 lesson learned - warpage on large parts",
@@ -432,7 +436,8 @@ class ExceptionEngine:
                 description=f"Feature '{undercut.location}' contains an undercut ({undercut.geometry_type or 'type not specified'}) "
                            f"that requires {undercut.requires_action} for manufacturing.",
                 current_specification=f"Undercut feature: {undercut.geometry_type or 'geometry type not specified'}",
-                recommended_change=f"Accept {undercut.requires_action} (increases tooling cost) or modify geometry to eliminate undercut",
+                recommended_change=f"Viable as specified. Requires {undercut.requires_action} which adds $5,000-$15,000 to tooling cost. "
+                                  f"Client must accept increased tooling cost OR revise part specification.",
                 reasoning=f"Undercuts prevent straight pull from mold and require {undercut.requires_action}. "
                          f"This adds complexity and cost to the mold. Side actions typically add $5,000-$15,000 to tooling cost.",
                 reference="Rule UC001 - Undercut handling",
@@ -488,7 +493,8 @@ class ExceptionEngine:
                         description=f"Suggested parting line '{pl.description}' has complex geometry. "
                                    f"Reasoning: {pl.reasoning or 'Not specified'}",
                         current_specification=f"Complex parting line - {pl.orientation or 'orientation not specified'}",
-                        recommended_change="Complex parting lines increase tooling cost. Simplify geometry if possible.",
+                        recommended_change="Viable as specified. Complex parting line increases tooling cost and lead time. "
+                                          "Client must accept increased cost OR revise part specification.",
                         reasoning="Stepped or complex parting lines require more machining time and may have "
                                  "tighter fit requirements to prevent flash.",
                         reference="Rule PL001 - Parting line complexity"
@@ -596,7 +602,8 @@ class ExceptionEngine:
                                f"(min: {wt.minimum_mm}mm, max: {wt.maximum_mm}mm). "
                                f"Non-uniform walls cause differential shrinkage and warpage.",
                     current_specification=f"Wall thickness range: {wt.minimum_mm}mm - {wt.maximum_mm}mm",
-                    recommended_change=f"Reduce variation to <2:1 ratio. Transition gradually between thick and thin sections.",
+                    recommended_change=f"Viable with HIGH RISK of warpage. Client may accept as-is with warpage risk OR "
+                                      f"loosen dimensional/flatness tolerances to accommodate differential shrinkage.",
                     reasoning="Thick sections shrink more than thin sections, creating internal stress and warpage. "
                              "Aim for uniform wall thickness throughout part.",
                     reference="Rule SW002 - Wall thickness uniformity",
@@ -649,7 +656,8 @@ class ExceptionEngine:
                                    f"estimated required tonnage is {estimated_tonnage_min:.0f}-{estimated_tonnage_max:.0f} tons. "
                                    f"This may exceed available press capacity.",
                         current_specification=f"Projected area: ~{projected_area_cm2:.0f} cm²",
-                        recommended_change="Verify press capacity with plant. May need to reduce part size or split into multiple components.",
+                        recommended_change="NOT VIABLE if press capacity insufficient. Must verify plant has adequate press tonnage "
+                                          f"({estimated_tonnage_min:.0f}+ tons minimum). Cannot proceed without confirmed press availability.",
                         reasoning="Insufficient press tonnage leads to flash, short shots, or mold damage. "
                                  "Tonnage requirement is proportional to projected area and injection pressure.",
                         reference="Rule PC001 - Press tonnage requirements"

@@ -182,6 +182,14 @@ IMPORTANT RULES:
 - Extract text EXACTLY as shown (don't interpret or convert)
 - If something is ambiguous, note it in analysis_notes
 
+CRITICAL - EXCEPTION ONLY PRINCIPLE:
+- Your analysis is for EXCEPTION REPORTING, not redesign
+- Identify what's NOT viable or risky "as specified"
+- Parting line and gating suggestions are for MOLD DESIGNER, not part changes
+- Do NOT suggest modifying part geometry
+- Do NOT recommend redesigning features
+- Only mark problems and assess manufacturability of the specified design
+
 ACCURACY IS CRITICAL: This analysis determines if the part can be manufactured.
 Missing or incorrect dimensions can cause million-dollar mistakes.
 
