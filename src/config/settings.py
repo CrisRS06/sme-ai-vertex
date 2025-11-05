@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     report_template_dir: str = "./templates"
     report_output_format: Literal["pdf", "html"] = "pdf"
 
+    # Database
+    sqlite_db_path: str = "./data/sme_ai.db"
+    vector_registry_db_path: str = "./data/vector_registry.db"
+
     class Config:
         env_file = ".env"
         case_sensitive = False

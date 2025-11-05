@@ -24,6 +24,10 @@ class ExceptionCategory(str, Enum):
     SURFACE_FINISH = "surface_finish"          # Surface finish concerns
     GDANDT = "gdandt"                          # GD&T specification issues
     MOLDING_DEFECT_RISK = "molding_defect_risk"  # Flash, short shot, knit line, etc.
+    PARTING_LINE = "parting_line"              # Parting line location and complexity
+    GATING = "gating"                          # Gate location and runner system
+    SHRINKAGE_WARPAGE = "shrinkage_warpage"    # Material shrinkage and warpage prediction
+    PRESS_CAPABILITY = "press_capability"      # Press tonnage and capability validation
     ASSEMBLY = "assembly"                      # Assembly-related issues
     OTHER = "other"
 
@@ -37,6 +41,7 @@ class DefectType(str, Enum):
     KNIT_LINE = "knit_line"
     BURN_MARK = "burn_mark"
     FLOW_LINES = "flow_lines"
+    EJECTION_ISSUE = "ejection_issue"          # Part sticking or ejection problems
 
 
 class MoldingException(BaseModel):

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feasibility Teaser - {{ part_id }}</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 0.75in;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            max-width: 7in;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 4px solid #003366;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #003366;
+            margin: 0;
+            font-size: 28pt;
+            font-weight: bold;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 12pt;
+            margin-top: 10px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            max-width: 200px;
+        }
+
+        .meta-box {
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+            border-left: 5px solid #003366;
+            margin-bottom: 25px;
+        }
+
+        .meta-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta-box td {
+            padding: 5px 10px;
+            font-size: 10pt;
+        }
+
+        .meta-box td:first-child {
+            font-weight: bold;
+            width: 140px;
+        }
+
+        .summary-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 15px;
+        }
+
+        .summary-badge.green {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .summary-badge.yellow {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+
+        .summary-badge.red {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .highlights {
+            margin-bottom: 25px;
+        }
+
+        .highlights h2 {
+            color: #003366;
+            font-size: 14pt;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 5px;
+        }
+
+        .highlights ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .highlights li {
+            padding: 10px 0 10px 30px;
+            position: relative;
+            font-size: 10.5pt;
+            line-height: 1.4;
+        }
+
+        .highlights li:before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: #003366;
+            font-weight: bold;
+        }
+
+        .highlights li.critical:before {
+            color: #dc3545;
+        }
+
+        .highlights li.warning:before {
+            color: #ffc107;
+        }
+
+        .highlights li.info:before {
+            color: #17a2b8;
+        }
+
+        .cta-box {
+            background-color: #e7f3ff;
+            border: 2px solid #003366;
+            padding: 20px;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .cta-box h3 {
+            color: #003366;
+            margin-top: 0;
+            font-size: 13pt;
+        }
+
+        .cta-box p {
+            margin: 10px 0;
+            font-size: 10pt;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #dee2e6;
+            font-size: 9pt;
+            color: #6c757d;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="logo">
+        <!-- Replace with actual logo -->
+        <div style="width: 200px; height: 60px; background-color: #003366; color: white; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-weight: bold; font-size: 16pt;">
+            COMPANY LOGO
+        </div>
+    </div>
+
+    <div class="header">
+        <h1>Feasibility Teaser</h1>
+        <div class="subtitle">Injection Molding Analysis Summary</div>
+    </div>
+
+    <div class="meta-box">
+        <table>
+            <tr>
+                <td>Part Number:</td>
+                <td><strong>{{ part_id or 'N/A' }}</strong></td>
+            </tr>
+            <tr>
+                <td>Part Name:</td>
+                <td>{{ part_name or 'N/A' }}</td>
+            </tr>
+            <tr>
+                <td>Material:</td>
+                <td>{{ material or 'Not Specified' }}</td>
+            </tr>
+            <tr>
+                <td>Analysis Date:</td>
+                <td>{{ analysis_date }}</td>
+            </tr>
+            <tr>
+                <td>Project:</td>
+                <td>{{ project_name or 'N/A' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Summary Badge -->
+    <div style="text-align: center; margin-bottom: 25px;">
+        {% if total_critical > 0 %}
+        <span class="summary-badge red">
+            ⚠️ {{ total_exceptions }} Exceptions Found ({{ total_critical }} Critical)
+        </span>
+        {% elif total_warnings > 0 %}
+        <span class="summary-badge yellow">
+            ⚠️ {{ total_exceptions }} Items Require Attention
+        </span>
+        {% else %}
+        <span class="summary-badge green">
+            ✓ Part Feasible with Standard Process
+        </span>
+        {% endif %}
+    </div>
+
+    <!-- Key Highlights -->
+    <div class="highlights">
+        <h2>Key Findings</h2>
+        <ul>
+            {% for highlight in highlights %}
+            <li class="{{ highlight.severity }}">
+                <strong>{{ highlight.category }}:</strong> {{ highlight.description }}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Quick Stats -->
+    {% if show_stats %}
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-around; text-align: center;">
+            <div>
+                <div style="font-size: 24pt; color: #dc3545; font-weight: bold;">{{ total_critical }}</div>
+                <div style="font-size: 9pt; color: #666;">Critical Issues</div>
+            </div>
+            <div>
+                <div style="font-size: 24pt; color: #ffc107; font-weight: bold;">{{ total_warnings }}</div>
+                <div style="font-size: 9pt; color: #666;">Warnings</div>
+            </div>
+            <div>
+                <div style="font-size: 24pt; color: #17a2b8; font-weight: bold;">{{ total_info }}</div>
+                <div style="font-size: 9pt; color: #666;">Recommendations</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Call to Action -->
+    <div class="cta-box">
+        <h3>Next Steps</h3>
+        <p>
+            <strong>Review the full Technical Assessment Report</strong> for detailed analysis,
+            evidence, and specific conditions required to proceed with manufacturing.
+        </p>
+        <p style="margin-top: 15px; font-size: 9pt;">
+            This teaser highlights key concerns. The complete report includes dimensional analysis,
+            GD&T validation, material compatibility, defect risk assessment, and manufacturing recommendations.
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>
+            <strong>Document ID:</strong> {{ analysis_id }}<br>
+            <strong>Generated:</strong> {{ generated_timestamp }}<br>
+            <strong>Confidential:</strong> This document contains proprietary information.
+        </p>
+        <p style="margin-top: 10px;">
+            For questions or to discuss findings, contact: <strong>engineering@company.com</strong>
+        </p>
+    </div>
+
+</body>
+</html>
