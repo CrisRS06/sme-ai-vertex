@@ -7,8 +7,13 @@ from vertexai.generative_models import GenerativeModel, GenerationConfig, Part, 
 from vertexai.preview.generative_models import grounding
 from typing import List, Dict, Any, Optional
 import structlog
+import uuid
+import json
+from datetime import datetime
+from jinja2 import Template, TemplateError
 
 from src.config.settings import settings
+from src.config.gcp_clients import get_storage_client
 from src.models.schemas import ChatMessage, ChatResponse
 from src.services.sqlite_db import get_db
 
@@ -36,29 +41,37 @@ class ChatService:
             project=settings.gcp_project_id,
             location=settings.gcp_region
         )
+        self.storage_client = get_storage_client()
 
-        # Use Flash for fast, interactive chat with context caching
+        # Select model based on quality_mode setting
+        model_name = (
+            settings.vertex_ai_model_pro if settings.quality_mode == "pro"
+            else settings.vertex_ai_model_flash
+        )
+
         # Context caching reduces costs by 75% for repeated context (knowledge base docs)
         if enable_context_caching:
             from src.config.gcp_clients import get_generative_model
             # Cache context for 1 hour (3600 seconds)
             self.model = get_generative_model(
-                settings.vertex_ai_model_flash,
+                model_name,
                 cache_ttl_seconds=3600,
                 max_context_cache_entries=32
             )
             logger.info(
                 "chat_service_initialized_with_caching",
                 project=settings.gcp_project_id,
-                model=settings.vertex_ai_model_flash,
+                model=model_name,
+                quality_mode=settings.quality_mode,
                 cache_ttl_seconds=3600
             )
         else:
-            self.model = GenerativeModel(settings.vertex_ai_model_flash)
+            self.model = GenerativeModel(model_name)
             logger.info(
                 "chat_service_initialized",
                 project=settings.gcp_project_id,
-                model=settings.vertex_ai_model_flash
+                model=model_name,
+                quality_mode=settings.quality_mode
             )
 
     def _build_analysis_context(self, analysis_id: str) -> str:
@@ -248,8 +261,8 @@ You are helping analyze technical drawings for injection molding feasibility.
                                         rag_corpus=settings.rag_data_store_id,
                                     )
                                 ],
-                                similarity_top_k=5,  # Top 5 similar documents
-                                vector_distance_threshold=0.3,  # Relevance threshold
+                                similarity_top_k=10,  # More results
+                                vector_distance_threshold=0.5,  # More lenient
                             )
                         )
                     )
@@ -277,33 +290,34 @@ You are helping analyze technical drawings for injection molding feasibility.
             # Extract text
             response_text = response.text
 
-            # Extract sources (if grounding is enabled)
+            # Extract sources from grounding metadata (in candidates)
             sources = []
+            try:
+                if hasattr(response, 'candidates') and response.candidates:
+                    for candidate in response.candidates:
+                        if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                            gm = candidate.grounding_metadata
 
-            # Parse grounding metadata when available
-            if hasattr(response, 'grounding_metadata') and response.grounding_metadata:
-                try:
-                    if hasattr(response.grounding_metadata, 'grounding_chunks'):
-                        for chunk in response.grounding_metadata.grounding_chunks:
-                            source_info = {
-                                "type": "knowledge_base"
-                            }
+                            # Extract from grounding_chunks
+                            if hasattr(gm, 'grounding_chunks'):
+                                for chunk in gm.grounding_chunks:
+                                    source_info = {"type": "knowledge_base"}
 
-                            if hasattr(chunk, 'retrieved_context'):
-                                ctx = chunk.retrieved_context
-                                if hasattr(ctx, 'title'):
-                                    source_info["title"] = ctx.title
-                                if hasattr(ctx, 'uri'):
-                                    source_info["uri"] = ctx.uri
+                                    if hasattr(chunk, 'retrieved_context'):
+                                        ctx = chunk.retrieved_context
+                                        if hasattr(ctx, 'title'):
+                                            source_info["title"] = ctx.title
+                                        if hasattr(ctx, 'uri'):
+                                            source_info["uri"] = ctx.uri
 
-                            if hasattr(chunk, 'relevance_score'):
-                                source_info["relevance_score"] = chunk.relevance_score
+                                    if hasattr(chunk, 'relevance_score'):
+                                        source_info["relevance_score"] = chunk.relevance_score
 
-                            sources.append(source_info)
+                                    sources.append(source_info)
 
-                    logger.info("sources_extracted", count=len(sources))
-                except Exception as e:
-                    logger.error("source_extraction_failed", error=str(e))
+                logger.info("sources_extracted", count=len(sources))
+            except Exception as e:
+                logger.error("source_extraction_failed", error=str(e), exc_info=True)
 
             logger.info(
                 "chat_response_generated",
@@ -385,7 +399,7 @@ Always cite sources when applicable.
                 )
             )
 
-            # Generate response
+            # Generate response with grounding
             generation_config = GenerationConfig(
                 temperature=0.4,
                 top_p=0.95,
@@ -393,22 +407,85 @@ Always cite sources when applicable.
                 max_output_tokens=2048,
             )
 
-            response = self.model.generate_content(
-                contents=contents,
-                generation_config=generation_config
-            )
+            # Enable grounding with RAG
+            tools = []
+            if settings.rag_data_store_id:
+                try:
+                    from vertexai.preview.generative_models import Tool
+                    from vertexai.preview import rag
+
+                    grounding_tool = Tool.from_retrieval(
+                        retrieval=rag.Retrieval(
+                            source=rag.VertexRagStore(
+                                rag_resources=[
+                                    rag.RagResource(
+                                        rag_corpus=settings.rag_data_store_id,
+                                    )
+                                ],
+                                similarity_top_k=10,
+                                vector_distance_threshold=0.5,  # More lenient
+                            )
+                        )
+                    )
+                    tools.append(grounding_tool)
+                    logger.info("general_chat_grounding_enabled")
+                except ImportError as e:
+                    logger.warning("grounding_import_failed", error=str(e))
+                except Exception as e:
+                    logger.error("grounding_setup_failed", error=str(e))
+
+            # Generate response
+            if tools:
+                response = self.model.generate_content(
+                    contents=contents,
+                    generation_config=generation_config,
+                    tools=tools
+                )
+            else:
+                response = self.model.generate_content(
+                    contents=contents,
+                    generation_config=generation_config
+                )
 
             response_text = response.text
 
+            # Extract sources from grounding metadata (in candidates)
+            sources = []
+            try:
+                if hasattr(response, 'candidates') and response.candidates:
+                    for candidate in response.candidates:
+                        if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                            gm = candidate.grounding_metadata
+
+                            # Extract from grounding_chunks
+                            if hasattr(gm, 'grounding_chunks'):
+                                for chunk in gm.grounding_chunks:
+                                    source_info = {"type": "knowledge_base"}
+
+                                    if hasattr(chunk, 'retrieved_context'):
+                                        ctx = chunk.retrieved_context
+                                        if hasattr(ctx, 'title'):
+                                            source_info["title"] = ctx.title
+                                        if hasattr(ctx, 'uri'):
+                                            source_info["uri"] = ctx.uri
+
+                                    sources.append(source_info)
+
+                logger.info("general_chat_sources_extracted", count=len(sources))
+            except Exception as e:
+                logger.error("general_source_extraction_failed", error=str(e), exc_info=True)
+
             logger.info(
                 "general_chat_response_generated",
-                response_length=len(response_text)
+                response_length=len(response_text),
+                grounded=len(tools) > 0,
+                sources_count=len(sources)
             )
 
             return ChatResponse(
                 message=response_text,
-                sources=[],
-                grounded=False  # No specific grounding for general questions
+                sources=sources,
+                grounded=len(tools) > 0  # Grounded if RAG tools were used
             )
 
         except Exception as e:
@@ -512,8 +589,8 @@ Always cite sources when applicable.
                                         rag_corpus=settings.rag_data_store_id,
                                     )
                                 ],
-                                similarity_top_k=3,
-                                vector_distance_threshold=0.4,
+                                similarity_top_k=10,
+                                vector_distance_threshold=0.5,  # More lenient
                             )
                         )
                     )
@@ -539,24 +616,31 @@ Always cite sources when applicable.
 
             response_text = response.text
 
-            # Extract sources
+            # Extract sources from grounding metadata (in candidates)
             sources = []
-            if hasattr(response, 'grounding_metadata') and response.grounding_metadata:
-                try:
-                    if hasattr(response.grounding_metadata, 'grounding_chunks'):
-                        for chunk in response.grounding_metadata.grounding_chunks:
-                            source_info = {"type": "knowledge_base"}
-                            
-                            if hasattr(chunk, 'retrieved_context'):
-                                ctx = chunk.retrieved_context
-                                if hasattr(ctx, 'title'):
-                                    source_info["title"] = ctx.title
-                                if hasattr(ctx, 'uri'):
-                                    source_info["uri"] = ctx.uri
-                            
-                            sources.append(source_info)
-                except Exception as e:
-                    logger.error("source_extraction_failed", error=str(e))
+            try:
+                if hasattr(response, 'candidates') and response.candidates:
+                    for candidate in response.candidates:
+                        if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                            gm = candidate.grounding_metadata
+
+                            # Extract from grounding_chunks
+                            if hasattr(gm, 'grounding_chunks'):
+                                for chunk in gm.grounding_chunks:
+                                    source_info = {"type": "knowledge_base"}
+
+                                    if hasattr(chunk, 'retrieved_context'):
+                                        ctx = chunk.retrieved_context
+                                        if hasattr(ctx, 'title'):
+                                            source_info["title"] = ctx.title
+                                        if hasattr(ctx, 'uri'):
+                                            source_info["uri"] = ctx.uri
+
+                                    sources.append(source_info)
+
+                logger.info("unified_chat_sources_extracted", count=len(sources))
+            except Exception as e:
+                logger.error("unified_source_extraction_failed", error=str(e), exc_info=True)
 
             logger.info(
                 "unified_chat_response_generated",
@@ -575,6 +659,54 @@ Always cite sources when applicable.
             logger.error("unified_chat_failed", error=str(e))
             raise
 
+    async def _upload_pdf_to_gcs(self, file_content: bytes, filename: str) -> str:
+        """
+        Upload PDF to GCS for use with Part.from_uri (File API approach).
+
+        This enables preprocessing like gemini.google.com:
+        - Automatic page scaling (768x768 to 3072x3072)
+        - Chunking optimization
+        - Format standardization
+
+        Args:
+            file_content: PDF bytes
+            filename: Original filename
+
+        Returns:
+            GCS URI (gs://bucket/path)
+        """
+        try:
+            # Use temporary chat uploads bucket
+            bucket = self.storage_client.bucket(settings.gcs_bucket_manuals)
+
+            # Create temporary path: temp-chat/{uuid}/{filename}
+            temp_id = str(uuid.uuid4())
+            blob_path = f"temp-chat/{temp_id}/{filename}"
+            blob = bucket.blob(blob_path)
+
+            # Upload with metadata
+            blob.metadata = {
+                "uploaded_at": datetime.now().isoformat(),
+                "purpose": "temporary_chat_analysis",
+                "ttl_hours": "24"  # For cleanup
+            }
+
+            blob.upload_from_string(file_content, content_type="application/pdf")
+
+            gcs_uri = f"gs://{settings.gcs_bucket_manuals}/{blob_path}"
+
+            logger.info(
+                "pdf_uploaded_to_gcs_for_chat",
+                gcs_uri=gcs_uri,
+                size_bytes=len(file_content)
+            )
+
+            return gcs_uri
+
+        except Exception as e:
+            logger.error("pdf_upload_to_gcs_failed", error=str(e))
+            raise
+
     async def unified_chat_with_file(
         self,
         message: str,
@@ -582,7 +714,13 @@ Always cite sources when applicable.
         file: Any
     ) -> ChatResponse:
         """
-        Unified chat specifically for file upload + analysis flow.
+        Two-stage analysis: PDF extraction + Knowledge Base analysis.
+
+        Stage 1: Extract technical specifications from PDF (using GCS + Part.from_uri)
+        Stage 2: Analyze extracted specs with RAG grounding from Knowledge Base
+
+        This combines visual PDF analysis with expert knowledge from manuals.
+        Uses File API approach (GCS) for optimal multimodal processing like gemini.google.com.
 
         Args:
             message: User's message
@@ -590,39 +728,207 @@ Always cite sources when applicable.
             file: PDF file to analyze
 
         Returns:
-            ChatResponse with analysis results + chat response
+            ChatResponse with unified analysis + sources
         """
         try:
             logger.info(
-                "unified_chat_file_processing",
+                "two_stage_pdf_analysis_start",
                 filename=file.filename,
                 message_preview=message[:100]
             )
 
-            # Analyze the PDF file
-            from src.services.drawing_analyzer import DrawingAnalyzer
-            drawing_analyzer = DrawingAnalyzer()
-
             # Read file content
             file_content = await file.read()
 
-            # Analyze the drawing
-            analysis = await drawing_analyzer.analyze_drawing_from_pdf(file_content)
+            # Upload PDF to GCS for File API approach (preprocessing like gemini.google.com)
+            gcs_uri = await self._upload_pdf_to_gcs(file_content, file.filename)
 
-            # Build comprehensive analysis context
-            analysis_context = self._build_analysis_from_object(analysis)
+            # ═══════════════════════════════════════════════════════════════
+            # STAGE 1: Extract technical specs from PDF (using GCS URI)
+            # ═══════════════════════════════════════════════════════════════
 
-            # Generate initial analysis summary for user
-            analysis_summary = self._format_analysis_summary(analysis)
+            from src.config.prompts import prompts_config
 
-            # Combine analysis summary with user's message for enhanced context
-            enhanced_message = f"{analysis_summary}\n\nUsuario pregunta: {message}"
+            extraction_prompt = prompts_config.get_prompt("pdf_extraction")
 
-            # Use unified chat with analysis context
-            return await self.unified_chat(enhanced_message, history, file=None)
+            logger.info("stage_1_extracting_specs", filename=file.filename, gcs_uri=gcs_uri)
+
+            # Create extraction request with Part.from_uri (File API approach)
+            extraction_contents = [
+                Content(
+                    role="user",
+                    parts=[
+                        Part.from_uri(
+                            uri=gcs_uri,  # Correct parameter: 'uri' not 'file_uri'
+                            mime_type="application/pdf"
+                        ),
+                        Part.from_text(extraction_prompt)
+                    ]
+                )
+            ]
+
+            generation_config = GenerationConfig(
+                temperature=0.3,  # Lower for precise extraction
+                top_p=0.95,
+                top_k=40,
+                max_output_tokens=2048,
+            )
+
+            # Extract specs (no grounding needed)
+            extraction_response = self.model.generate_content(
+                contents=extraction_contents,
+                generation_config=generation_config
+            )
+
+            extracted_specs = extraction_response.text
+            logger.info("stage_1_complete", specs_length=len(extracted_specs))
+
+            # ═══════════════════════════════════════════════════════════════
+            # STAGE 2: Analyze with Knowledge Base grounding
+            # ═══════════════════════════════════════════════════════════════
+
+            kb_analysis_prompt_template = prompts_config.get_prompt("kb_analysis")
+            # Use replace() instead of format() to avoid conflicts with literal curly braces in prompt
+            kb_analysis_prompt = kb_analysis_prompt_template.replace(
+                "{extracted_specs}", extracted_specs
+            )
+
+            logger.info("stage_2_kb_analysis", prompt_length=len(kb_analysis_prompt))
+
+            # Format history for stage 2
+            contents = self._format_chat_history(history)
+            contents.append(
+                Content(
+                    role="user",
+                    parts=[Part.from_text(kb_analysis_prompt)]
+                )
+            )
+
+            # Enable RAG grounding for stage 2
+            tools = []
+            if settings.rag_data_store_id:
+                try:
+                    from vertexai.preview.generative_models import Tool
+                    from vertexai.preview import rag
+
+                    grounding_tool = Tool.from_retrieval(
+                        retrieval=rag.Retrieval(
+                            source=rag.VertexRagStore(
+                                rag_resources=[
+                                    rag.RagResource(
+                                        rag_corpus=settings.rag_data_store_id,
+                                    )
+                                ],
+                                similarity_top_k=10,
+                                vector_distance_threshold=0.5,
+                            )
+                        )
+                    )
+                    tools.append(grounding_tool)
+                    logger.info("stage_2_grounding_enabled")
+                except Exception as e:
+                    logger.warning("grounding_setup_failed", error=str(e))
+
+            # Generate KB analysis with grounding
+            generation_config.temperature = 0.4  # Slightly higher for analysis
+            generation_config.max_output_tokens = 3072  # More tokens for detailed analysis
+
+            if tools:
+                kb_response = self.model.generate_content(
+                    contents=contents,
+                    generation_config=generation_config,
+                    tools=tools
+                )
+            else:
+                kb_response = self.model.generate_content(
+                    contents=contents,
+                    generation_config=generation_config
+                )
+
+            kb_analysis = kb_response.text
+            logger.info("stage_2_complete", analysis_length=len(kb_analysis))
+
+            # Extract sources from KB grounding
+            sources = []
+            try:
+                if hasattr(kb_response, 'candidates') and kb_response.candidates:
+                    for candidate in kb_response.candidates:
+                        if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                            gm = candidate.grounding_metadata
+
+                            if hasattr(gm, 'grounding_chunks'):
+                                for chunk in gm.grounding_chunks:
+                                    source_info = {"type": "knowledge_base"}
+
+                                    if hasattr(chunk, 'retrieved_context'):
+                                        ctx = chunk.retrieved_context
+                                        if hasattr(ctx, 'title'):
+                                            source_info["title"] = ctx.title
+                                        if hasattr(ctx, 'uri'):
+                                            source_info["uri"] = ctx.uri
+
+                                    sources.append(source_info)
+
+                logger.info("sources_extracted_from_kb", count=len(sources))
+            except Exception as e:
+                logger.error("source_extraction_failed", error=str(e))
+
+            # Add PDF as source
+            sources.insert(0, {
+                "type": "uploaded_pdf",
+                "title": file.filename
+            })
+
+            # ═══════════════════════════════════════════════════════════════
+            # Combine results using template (Jinja2 for complex templates)
+            # ═══════════════════════════════════════════════════════════════
+
+            unified_template_str = prompts_config.get_prompt("unified_response")
+
+            # Try to parse as JSON if template uses Jinja2 syntax
+            try:
+                # Attempt to parse extraction and analysis as JSON
+                try:
+                    extraction_data = json.loads(extracted_specs) if isinstance(extracted_specs, str) else extracted_specs
+                except (json.JSONDecodeError, TypeError):
+                    extraction_data = {"raw": extracted_specs}
+
+                try:
+                    kb_analysis_data = json.loads(kb_analysis) if isinstance(kb_analysis, str) else kb_analysis
+                except (json.JSONDecodeError, TypeError):
+                    kb_analysis_data = {"raw": kb_analysis}
+
+                # Try Jinja2 rendering first (for complex templates)
+                jinja_template = Template(unified_template_str)
+                final_response = jinja_template.render(
+                    extraction_result=extraction_data,
+                    kb_analysis_result=kb_analysis_data,
+                    conclusion="El análisis está completo. Si necesitas más detalles sobre algún aspecto específico, pregúntame."
+                )
+            except (TemplateError, Exception) as e:
+                # Fallback to simple format() for simple templates
+                logger.warning("jinja2_render_failed_using_format", error=str(e))
+                final_response = unified_template_str.format(
+                    extraction_result=extracted_specs,
+                    kb_analysis_result=kb_analysis,
+                    conclusion="El análisis está completo. Si necesitas más detalles sobre algún aspecto específico, pregúntame."
+                )
+
+            logger.info(
+                "two_stage_analysis_complete",
+                total_response_length=len(final_response),
+                sources_count=len(sources),
+                pdf_filename=file.filename
+            )
+
+            return ChatResponse(
+                message=final_response,
+                sources=sources,
+                grounded=True
+            )
 
         except Exception as e:
-            logger.error("unified_chat_file_failed", error=str(e), filename=file.filename)
+            logger.error("two_stage_analysis_failed", error=str(e), filename=file.filename)
             raise
 
     async def chat_stream(
@@ -710,8 +1016,8 @@ Always cite sources when applicable.
                                         rag_corpus=settings.rag_data_store_id,
                                     )
                                 ],
-                                similarity_top_k=5,
-                                vector_distance_threshold=0.3,
+                                similarity_top_k=10,
+                                vector_distance_threshold=0.5,  # More lenient
                             )
                         )
                     )
